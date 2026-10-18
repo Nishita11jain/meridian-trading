@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.trading.api.extensions.advice.CandleCacheMapper">
+
+    <resultMap id="CandleCacheResultMap" type="com.trading.api.extensions.advice.CandleCacheRow">
+        <id property="symbol" column="symbol" javaType="java.lang.String"/>
+        <result property="interval" column="interval" javaType="java.lang.String"/>
+        <result property="currency" column="currency" javaType="java.lang.String"/>
+        <result property="candlesJson" column="candles_json" javaType="java.lang.String"/>
+        <result property="fetchedAt" column="fetched_at" javaType="java.time.Instant"/>
+        <result property="expiresAt" column="expires_at" javaType="java.time.Instant"/>
+    </resultMap>
+
+    <select id="findBySymbol" resultMap="CandleCacheResultMap">
+        SELECT symbol, interval, currency, candles_json, fetched_at, expires_at
+        FROM candle_cache
+        WHERE symbol = #{symbol}
+    </select>
+
+    <update id="upsert">
+        INSERT INTO candle_cache (symbol, interval, currency, candles_json, fetched_at, expires_at)
+        VALUES (#{symbol}, #{interval}, #{currency}, #{candlesJson}, #{fetchedAt}, #{expiresAt})
+        ON CONFLICT (symbol) DO UPDATE SET
+            interval     = EXCLUDED.interval,
+            currency     = EXCLUDED.currency,
+            candles_json = EXCLUDED.candles_json,
+            fetched_at   = EXCLUDED.fetched_at,
+            expires_at   = EXCLUDED.expires_at
+    </update>
+
+</mapper>

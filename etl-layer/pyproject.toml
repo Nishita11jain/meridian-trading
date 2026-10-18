@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sprint-04-analytics-etl"
+version = "0.1.0"
+description = "Sprint 4 analytics and ingestion pipeline"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "python-dotenv>=1.0,<2",
+    "requests>=2.32,<3",
+    "pandas>=2.2,<3",
+    "duckdb>=1.0,<2",
+    "matplotlib>=3.9,<4",
+    "psycopg2-binary>=2.9,<3"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8,<9"
+]
+
+[project.scripts]
+trading-analytics = "trading_analytics.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests", "src/fact_trades/tests"]
+addopts = "-q"

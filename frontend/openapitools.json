@@ -1,0 +1,65 @@
+{
+  "$schema": "./node_modules/@openapitools/openapi-generator-cli/config.schema.json",
+  "spaces": 2,
+  "generator-cli": {
+    "version": "7.14.0",
+    "generators": {
+      "auth": {
+        "generatorName": "typescript-angular",
+        "inputSpec": "../contracts/api-schemas/auth-api.yaml",
+        "output": "src/app/clients/auth-client",
+        "skipValidateSpec": true,
+        "additionalProperties": { "modelPropertyNaming": "camelCase" }
+      },
+      "trade": {
+        "generatorName": "typescript-angular",
+        "inputSpec": "../contracts/api-schemas/trade-api.yaml",
+        "output": "src/app/clients/trade-client",
+        "skipValidateSpec": true,
+        "additionalProperties": { "modelPropertyNaming": "camelCase" }
+      },
+      "preferences": {
+        "generatorName": "typescript-angular",
+        "inputSpec": "../contracts/api-schemas/preferences-api.yaml",
+        "output": "src/app/clients/preferences-client",
+        "skipValidateSpec": true,
+        "additionalProperties": { "modelPropertyNaming": "camelCase" }
+      },
+      "notifications": {
+        "generatorName": "typescript-angular",
+        "inputSpec": "../contracts/api-schemas/notifications-api.yaml",
+        "output": "src/app/clients/notifications-client",
+        "skipValidateSpec": true,
+        "additionalProperties": { "modelPropertyNaming": "camelCase" }
+      },
+      "watchlists": {
+        "generatorName": "typescript-angular",
+        "inputSpec": "../contracts/api-schemas/watchlists-api.yaml",
+        "output": "src/app/clients/watchlists-client",
+        "skipValidateSpec": true,
+        "additionalProperties": { "modelPropertyNaming": "camelCase" }
+      },
+      "portfolio": {
+        "generatorName": "typescript-angular",
+        "inputSpec": "../contracts/api-schemas/portfolio-api.yaml",
+        "output": "src/app/clients/portfolio-client",
+        "skipValidateSpec": true,
+        "additionalProperties": { "modelPropertyNaming": "camelCase" }
+      },
+      "advice": {
+        "generatorName": "typescript-angular",
+        "inputSpec": "../contracts/api-schemas/advice-api.yaml",
+        "output": "src/app/clients/advice-client",
+        "skipValidateSpec": true,
+        "additionalProperties": { "modelPropertyNaming": "camelCase" }
+      },
+      "strategies": {
+        "generatorName": "typescript-angular",
+        "inputSpec": "../contracts/api-schemas/strategies-api.yaml",
+        "output": "src/app/clients/strategies-client",
+        "skipValidateSpec": true,
+        "additionalProperties": { "modelPropertyNaming": "camelCase" }
+      }
+    }
+  }
+}

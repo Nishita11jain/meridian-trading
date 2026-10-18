@@ -1,0 +1,62 @@
+# Every value comes from the environment (root .env, see .env.example); nothing here is a secret.
+spring:
+  application:
+    name: trade-executor
+
+  # Two copies of HikariPoolDataSourceMetadataProviderConfiguration land on this
+  # service's classpath (org.springframework.boot.autoconfigure.jdbc.metadata and
+  # org.springframework.boot.jdbc.autoconfigure), which fails context startup
+  # without this. trade-api-service hits the same conflict and needs it too.
+  main:
+    allow-bean-definition-overriding: true
+
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:trading}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+
+    producer:
+      properties:
+        acks: all
+        enable.idempotence: true
+        retries: 2147483647
+        max.in.flight.requests.per.connection: 5
+
+    consumer:
+      group-id: trade-executor
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+# Health check only -- this service has no controllers and no inbound API,
+# reachable exclusively through the broker and its own scheduler.
+server:
+  address: 0.0.0.0
+  port: ${EXECUTOR_PORT:8082}
+
+fauxnance:
+  base-url: ${FAUXNANCE_BASE_URL}
+  api-key: ${FAUXNANCE_API_KEY}
+
+mybatis:
+  mapper-locations: classpath:mapper/**/*.xml
+
+poll:
+  interval-seconds: ${POLL_INTERVAL_SECONDS:60}
+
+# Market-data polling (decision log 0015). Every poll.interval-seconds the poller asks Fauxnance for the symbols
+# whose market is open; a closed market is asked for at most once a day. About 600 requests a day for 125 symbols.
+# Currency rates and daily candles have their own schedules, below (UTC cron, seconds first).
+fx:
+  poll:
+    cron: ${FX_POLL_CRON:0 15 0 * * *}
+
+candles:
+  sync:
+    cron: ${CANDLES_SYNC_CRON:0 30 23 * * *}

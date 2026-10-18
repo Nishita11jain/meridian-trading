@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.trading.api.mapper.AccountMapper">
+
+    <resultMap id="AccountResultMap" type="com.trading.api.mapper.row.AccountRow">
+        <id property="id" column="id" javaType="java.lang.Long"/>
+        <result property="accountId" column="account_id" javaType="java.lang.String"/>
+        <result property="holderName" column="holder_name" javaType="java.lang.String"/>
+        <result property="cashBalance" column="cash_balance" javaType="com.trading.domain.Money"
+                typeHandler="com.trading.api.mapper.MoneyTypeHandler"/>
+        <result property="status" column="status" javaType="com.trading.domain.AccountStatus"/>
+        <result property="version" column="version" javaType="java.lang.Integer"/>
+    </resultMap>
+
+    <select id="findById" resultMap="AccountResultMap">
+        SELECT id, account_id, holder_name, cash_balance, status, version
+        FROM accounts
+        WHERE id = #{id}
+    </select>
+
+    <select id="findByIdForUpdate" resultMap="AccountResultMap">
+        SELECT id, account_id, holder_name, cash_balance, status, version
+        FROM accounts
+        WHERE id = #{id}
+        FOR NO KEY UPDATE
+    </select>
+
+    <select id="findLastUpdated" resultType="java.time.Instant">
+        SELECT last_updated
+        FROM accounts
+        WHERE id = #{id}
+    </select>
+
+        <update id="updateCashBalanceWithVersion">
+        UPDATE accounts
+        SET cash_balance = #{newBalance}, version = version + 1, last_updated = NOW()
+        WHERE id = #{accountId}
+          AND version = #{expectedVersion}
+    </update>
+
+</mapper>

@@ -1,0 +1,616 @@
+openapi: 3.0.3
+
+info:
+  title: Market Data, Watchlists and Price Alerts API
+  version: 1.0.0
+  description: |
+    Market quotes, watchlists and price alerts for the Enterprise Trading Platform (Sprint 10
+    extension). One module inside the Trade REST API, served on the same origin and port under
+    `/api/v1`, protected by the same bearer token.
+
+    A consumer on the `market-data` topic (group `watchlist-service`) maintains the latest quote per
+    symbol and a tick history, and fires any active alert a quote has crossed. A triggered alert is
+    delivered through the notifications module on the customer's configured channel, never written to a
+    log. Prices are read only from this platform cache; the browser never calls the Fauxnance API.
+
+    ## Access control
+
+    Quotes and the instrument list are public market data, the same for every customer, so those routes
+    do not filter by account (they still require a verified token). Watchlists and alerts belong to the
+    account the token names: a watchlist or alert owned by another account is answered 404 (WL-404 /
+    ALERT-404), never returned, and the account is never taken from the request body.
+
+servers:
+  - url: http://localhost:5500
+    description: Local development (Trade REST API).
+
+tags:
+  - name: Market
+    description: Current prices and the instrument catalogue.
+  - name: Watchlists
+    description: Customer watchlists and their instruments.
+  - name: Alerts
+    description: Price alerts and their state.
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/v1/market/instruments:
+    get:
+      tags: [Market]
+      summary: The tradable instruments, for symbol pickers
+      operationId: getInstruments
+      responses:
+        '200':
+          description: Tradable instruments.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/InstrumentResponse' }
+        '401': { $ref: '#/components/responses/Unauthorised' }
+
+  /api/v1/market/quotes:
+    get:
+      tags: [Market]
+      summary: The latest quote for every priced symbol
+      operationId: getQuotes
+      responses:
+        '200':
+          description: Latest quotes.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/MarketQuoteResponse' }
+        '401': { $ref: '#/components/responses/Unauthorised' }
+
+  /api/v1/market/freshness:
+    get:
+      tags: [Market]
+      summary: When prices were last stored and when the next batch is due
+      description: >-
+        For refreshing in step with the feed: a page reads prices once just after nextUpdateAt instead of
+        on a fixed timer. Reads the platform's own table; never calls the market-data provider.
+      operationId: getMarketFreshness
+      responses:
+        '200':
+          description: The feed's timing.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MarketFreshnessResponse' }
+        '401': { $ref: '#/components/responses/Unauthorised' }
+
+  /api/v1/market/fx-rates:
+    get:
+      tags: [Market]
+      summary: The rupee rates a dollar order would be locked at
+      description: >-
+        INR is the only currency that holds money. A dollar order is converted once, at placement, at the stored
+        daily USD/INR rate moved by a margin against the customer (up for a buy, down for a sell), and that rate
+        is kept on the order. This route tells the order ticket those rates so it can show the rupee cost before
+        the customer confirms. Reads the platform's own table; never calls the market-data provider.
+      operationId: getFxRates
+      responses:
+        '200':
+          description: The rates, in rupees per dollar.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FxRatesResponse' }
+        '401': { $ref: '#/components/responses/Unauthorised' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+
+  /api/v1/market/quotes/{symbol}:
+    get:
+      tags: [Market]
+      summary: The latest quote for one symbol
+      operationId: getQuote
+      parameters: [ { $ref: '#/components/parameters/Symbol' } ]
+      responses:
+        '200':
+          description: The latest quote.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MarketQuoteResponse' }
+        '401': { $ref: '#/components/responses/Unauthorised' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/market/history/{symbol}:
+    get:
+      tags: [Market]
+      summary: Recent ticks for a symbol, newest first (for a sparkline)
+      operationId: getHistory
+      parameters:
+        - { $ref: '#/components/parameters/Symbol' }
+        - name: range
+          in: query
+          required: false
+          description: Chart range from cached price_history.
+          schema:
+            type: string
+            enum: [5D, 1M, 3M, 6M, 1Y]
+            default: 5D
+      responses:
+        '200':
+          description: Recent ticks.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/MarketQuoteResponse' }
+        '401': { $ref: '#/components/responses/Unauthorised' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/v1/watchlists:
+    get:
+      tags: [Watchlists]
+      summary: The account's watchlists, each with its instruments and their current prices
+      operationId: getWatchlists
+      responses:
+        '200':
+          description: Watchlists.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/WatchlistResponse' }
+        '401': { $ref: '#/components/responses/Unauthorised' }
+    post:
+      tags: [Watchlists]
+      summary: Create a watchlist
+      operationId: createWatchlist
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateWatchlistRequest' }
+      responses:
+        '201':
+          description: The created watchlist.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WatchlistResponse' }
+        '401': { $ref: '#/components/responses/Unauthorised' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/v1/watchlists/presets:
+    get:
+      tags: [Watchlists]
+      summary: Ready-made lists, one per market (e.g. all NSE stocks)
+      operationId: getWatchlistPresets
+      responses:
+        '200':
+          description: The ready-made lists.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/WatchlistPresetResponse' }
+        '401': { $ref: '#/components/responses/Unauthorised' }
+
+  /api/v1/watchlists/presets/{key}:
+    post:
+      tags: [Watchlists]
+      summary: Create your own watchlist from a ready-made list
+      description: >-
+        Named after the ready-made list ("NSE stocks", or "NSE stocks 2" if taken), with its instruments.
+        It is then an ordinary watchlist of yours, priced by the poller like any other.
+      operationId: createWatchlistFromPreset
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema: { type: string }
+          description: The ready-made list's key, e.g. NSE, US, FX, CRYPTO.
+      responses:
+        '201':
+          description: The new watchlist.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WatchlistResponse' }
+        '401': { $ref: '#/components/responses/Unauthorised' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/watchlists/{id}/instruments/{symbol}/flag:
+    put:
+      tags: [Watchlists]
+      summary: Put a colour flag (RED, AMBER, GREEN) on an instrument in its watchlist; null removes it
+      operationId: setInstrumentFlag
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+        - { $ref: '#/components/parameters/Symbol' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetItemFlagRequest' }
+      responses:
+        '200':
+          description: The updated watchlist.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WatchlistResponse' }
+        '401': { $ref: '#/components/responses/Unauthorised' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/v1/watchlists/{id}:
+    get:
+      tags: [Watchlists]
+      summary: One watchlist owned by the caller
+      operationId: getWatchlist
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: The watchlist.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WatchlistResponse' }
+        '401': { $ref: '#/components/responses/Unauthorised' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Watchlists]
+      summary: Rename a watchlist
+      operationId: renameWatchlist
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RenameWatchlistRequest' }
+      responses:
+        '200':
+          description: The renamed watchlist.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WatchlistResponse' }
+        '401': { $ref: '#/components/responses/Unauthorised' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    delete:
+      tags: [Watchlists]
+      summary: Delete a watchlist and its instruments (alerts are separate and kept)
+      operationId: deleteWatchlist
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '204':
+          description: Deleted.
+        '401': { $ref: '#/components/responses/Unauthorised' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/watchlists/{id}/instruments/order:
+    put:
+      tags: [Watchlists]
+      summary: Put the watchlist's instruments in the customer's order
+      description: >-
+        The named symbols come first, in the order given; instruments not named keep their place after
+        them. Symbols not on the watchlist are ignored.
+      operationId: reorderInstruments
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReorderWatchlistRequest' }
+      responses:
+        '200':
+          description: The reordered watchlist.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WatchlistResponse' }
+        '401': { $ref: '#/components/responses/Unauthorised' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/v1/watchlists/{id}/instruments:
+    post:
+      tags: [Watchlists]
+      summary: Add a tradable instrument to a watchlist
+      operationId: addInstrument
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddInstrumentRequest' }
+      responses:
+        '200':
+          description: The updated watchlist.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WatchlistResponse' }
+        '401': { $ref: '#/components/responses/Unauthorised' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/v1/watchlists/{id}/instruments/{symbol}:
+    delete:
+      tags: [Watchlists]
+      summary: Remove an instrument from a watchlist
+      operationId: removeInstrument
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+        - { $ref: '#/components/parameters/Symbol' }
+      responses:
+        '200':
+          description: The updated watchlist.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WatchlistResponse' }
+        '401': { $ref: '#/components/responses/Unauthorised' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/alerts:
+    get:
+      tags: [Alerts]
+      summary: The account's price alerts
+      operationId: getAlerts
+      responses:
+        '200':
+          description: Alerts.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AlertResponse' }
+        '401': { $ref: '#/components/responses/Unauthorised' }
+    post:
+      tags: [Alerts]
+      summary: Create a price alert
+      operationId: createAlert
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateAlertRequest' }
+      responses:
+        '201':
+          description: The created alert.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AlertResponse' }
+        '401': { $ref: '#/components/responses/Unauthorised' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyAlerts' }
+
+  /api/v1/alerts/{id}:
+    delete:
+      tags: [Alerts]
+      summary: Cancel a price alert
+      operationId: cancelAlert
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200':
+          description: The alert's state after cancelling.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AlertResponse' }
+        '401': { $ref: '#/components/responses/Unauthorised' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, format: int64 }
+    Symbol:
+      name: symbol
+      in: path
+      required: true
+      schema: { type: string }
+
+  schemas:
+    InstrumentResponse:
+      type: object
+      required: [symbol, name, assetClass, currency, market, tradingStatus]
+      properties:
+        symbol: { type: string }
+        name: { type: string }
+        assetClass: { type: string }
+        currency: { type: string }
+        market:
+          type: string
+          description: The market it trades on, for display (NSE, BSE, US market, FX market, Crypto).
+        tradingStatus:
+          type: string
+          enum: [OPEN, CLOSED]
+          description: >-
+            Whether its market is trading now (decision log 0017). Orders for a CLOSED market are refused
+            with MKT-409. Computed per request from the trading-hours rule and the market_holidays table.
+        nextOpen:
+          type: string
+          format: date-time
+          nullable: true
+          description: When a CLOSED market next opens. Null while open, and for crypto, which never closes.
+
+    MarketQuoteResponse:
+      type: object
+      required: [symbol, stale]
+      properties:
+        symbol: { type: string }
+        lastPrice: { type: number, nullable: true }
+        bid: { type: number, nullable: true }
+        ask: { type: number, nullable: true }
+        currency: { type: string, nullable: true }
+        change: { type: number, nullable: true }
+        changePercent: { type: number, nullable: true }
+        previousClose: { type: number, nullable: true }
+        marketState: { type: string, nullable: true }
+        stale: { type: boolean }
+        quoteAsOf: { type: string, format: date-time, nullable: true }
+        openPrice:
+          type: number
+          nullable: true
+          description: Daily candle open. Null when the response row is from tick-history fallback.
+        highPrice:
+          type: number
+          nullable: true
+          description: Daily candle high. Null when the response row is from tick-history fallback.
+        lowPrice:
+          type: number
+          nullable: true
+          description: Daily candle low. Null when the response row is from tick-history fallback.
+
+    WatchlistItemResponse:
+      type: object
+      required: [symbol]
+      properties:
+        symbol: { type: string }
+        quote: { $ref: '#/components/schemas/MarketQuoteResponse' }
+        flag:
+          type: string
+          nullable: true
+          enum: [RED, AMBER, GREEN, null]
+          description: The colour flag the customer put on it; null for none.
+
+    WatchlistResponse:
+      type: object
+      required: [id, name, items]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        createdOn: { type: string, format: date-time, nullable: true }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/WatchlistItemResponse' }
+
+    CreateWatchlistRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, maxLength: 100 }
+
+    AddInstrumentRequest:
+      type: object
+      required: [symbol]
+      properties:
+        symbol: { type: string }
+
+    SetItemFlagRequest:
+      type: object
+      properties:
+        flag:
+          type: string
+          nullable: true
+          enum: [RED, AMBER, GREEN, null]
+          description: The flag colour; null removes the flag.
+
+    WatchlistPresetResponse:
+      type: object
+      required: [key, name, symbols]
+      properties:
+        key: { type: string, description: 'The market, e.g. NSE, US, FX, CRYPTO.' }
+        name: { type: string, description: 'e.g. NSE stocks.' }
+        symbols:
+          type: array
+          items: { type: string }
+
+    RenameWatchlistRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, maxLength: 100 }
+
+    ReorderWatchlistRequest:
+      type: object
+      required: [symbols]
+      properties:
+        symbols:
+          type: array
+          maxItems: 250
+          items: { type: string }
+
+    FxRatesResponse:
+      type: object
+      required: [baseCurrency, currency, midRate, buyRate, sellRate, marginPercent]
+      properties:
+        baseCurrency: { type: string, description: The currency that holds money (INR). }
+        currency: { type: string, description: The foreign currency the rates convert from (USD). }
+        midRate: { type: number, description: Rupees per dollar as stored, before any margin. }
+        buyRate: { type: number, description: The rate a buy order is locked at (mid plus the margin). }
+        sellRate: { type: number, description: The rate a sell order is locked at (mid minus the margin). }
+        marginPercent: { type: number, description: The margin applied each way, in percent. }
+        rateDate:
+          type: string
+          format: date
+          nullable: true
+          description: The day the stored rate is for.
+
+    MarketFreshnessResponse:
+      type: object
+      required: [pollIntervalSeconds]
+      properties:
+        lastUpdatedOn:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the platform last stored prices (not the quote's exchange time). Null before any.
+        nextUpdateAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the next batch is due (lastUpdatedOn plus the poll interval). Null before any.
+        pollIntervalSeconds:
+          type: integer
+          description: How often the poller publishes prices.
+
+    AlertResponse:
+      type: object
+      required: [id, symbol, direction, targetPrice, status]
+      properties:
+        id: { type: integer, format: int64 }
+        symbol: { type: string }
+        direction: { type: string, enum: [ABOVE, BELOW] }
+        targetPrice: { type: number }
+        status: { type: string, enum: [ACTIVE, TRIGGERED, CANCELLED] }
+        createdOn: { type: string, format: date-time, nullable: true }
+        triggeredOn: { type: string, format: date-time, nullable: true }
+        triggeredPrice: { type: number, nullable: true }
+
+    CreateAlertRequest:
+      type: object
+      required: [symbol, direction, targetPrice]
+      properties:
+        symbol: { type: string }
+        direction: { type: string, enum: [ABOVE, BELOW] }
+        targetPrice: { type: number }
+
+    ErrorResponse:
+      type: object
+      required: [errorCode, message]
+      properties:
+        errorCode:
+          type: string
+          enum: [AUTH-401, INS-404, WL-404, WL-409, ALERT-404, LIMIT-429, VAL-422, MKT-503]
+        message:
+          type: string
+
+  responses:
+    Unauthorised:
+      description: Missing, malformed, expired or forged token.
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+    NotFound:
+      description: The resource does not exist or is not owned by the caller.
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+    Conflict:
+      description: A duplicate name or instrument.
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+    ValidationError:
+      description: A value is not acceptable.
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+    Unavailable:
+      description: No exchange rate is stored yet (MKT-503).
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+    TooManyAlerts:
+      description: The account's active-alert cap has been reached.
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }

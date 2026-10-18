@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.trading.api.extensions.strategies.StrategyExecutionMapper">
+
+    <resultMap id="StrategyExecutionResultMap" type="com.trading.api.extensions.strategies.StrategyExecutionRow">
+        <id property="id" column="id" javaType="java.lang.Long"/>
+        <result property="strategyId" column="strategy_id" javaType="java.lang.Long"/>
+        <result property="triggeredAt" column="triggered_at" javaType="java.time.Instant"/>
+        <result property="triggeringPrice" column="triggering_price" javaType="java.math.BigDecimal"/>
+        <result property="action" column="action" javaType="java.lang.String"/>
+        <result property="outcome" column="outcome" javaType="java.lang.String"/>
+        <result property="detail" column="detail" javaType="java.lang.String"/>
+        <result property="orderId" column="order_id" javaType="java.util.UUID" typeHandler="com.trading.api.mapper.UuidTypeHandler"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO strategy_execution_log
+            (strategy_id, triggered_at, triggering_price, action, outcome, detail, order_id)
+        VALUES
+            (#{strategyId}, NOW(), #{triggeringPrice}, #{action}, #{outcome}, #{detail},
+             #{orderId,javaType=java.util.UUID,typeHandler=com.trading.api.mapper.UuidTypeHandler})
+    </insert>
+
+    <select id="findByStrategy" resultMap="StrategyExecutionResultMap">
+        SELECT * FROM strategy_execution_log
+        WHERE strategy_id = #{strategyId}
+        ORDER BY triggered_at DESC
+        LIMIT #{limit}
+    </select>
+
+</mapper>

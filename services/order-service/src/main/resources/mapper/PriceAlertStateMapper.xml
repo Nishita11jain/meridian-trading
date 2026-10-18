@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.trading.api.extensions.watchlists.PriceAlertStateMapper">
+
+    <update id="upsertLastObserved">
+        INSERT INTO price_alert_state (alert_id, last_observed_price, updated_on)
+        VALUES (#{alertId}, #{price}, NOW())
+        ON CONFLICT (alert_id) DO UPDATE SET
+            last_observed_price = EXCLUDED.last_observed_price,
+            updated_on = NOW()
+    </update>
+
+</mapper>

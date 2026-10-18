@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.trading.api.extensions.strategies.StrategiesMapper">
+
+    <resultMap id="StrategyResultMap" type="com.trading.api.extensions.strategies.StrategyRow">
+        <id property="id" column="id" javaType="java.lang.Long"/>
+        <result property="accountId" column="account_id" javaType="java.lang.Long"/>
+        <result property="symbol" column="symbol" javaType="java.lang.String"/>
+        <result property="side" column="side" javaType="java.lang.String"/>
+        <result property="strategyType" column="strategy_type" javaType="java.lang.String"/>
+        <result property="fastWindow" column="fast_window" javaType="java.lang.Integer"/>
+        <result property="slowWindow" column="slow_window" javaType="java.lang.Integer"/>
+        <result property="bandPeriod" column="band_period" javaType="java.lang.Integer"/>
+        <result property="bandMultiplier" column="band_multiplier" javaType="java.math.BigDecimal"/>
+        <result property="orderQuantity" column="order_quantity" javaType="java.lang.Integer"/>
+        <result property="maxSpend" column="max_spend" javaType="java.math.BigDecimal"/>
+        <result property="maxPositionSize" column="max_position_size" javaType="java.lang.Integer"/>
+        <result property="maxConsecutiveFailures" column="max_consecutive_failures" javaType="java.lang.Integer"/>
+        <result property="consecutiveFailures" column="consecutive_failures" javaType="java.lang.Integer"/>
+        <result property="status" column="status" javaType="java.lang.String"/>
+        <result property="disabledReason" column="disabled_reason" javaType="java.lang.String"/>
+        <result property="createdOn" column="created_on" javaType="java.time.Instant"/>
+        <result property="updatedOn" column="updated_on" javaType="java.time.Instant"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO trading_strategy
+            (account_id, symbol, side, strategy_type, fast_window, slow_window, band_period, band_multiplier,
+             order_quantity, max_spend, max_position_size, max_consecutive_failures, consecutive_failures,
+             status, created_on, updated_on)
+        VALUES
+            (#{accountId}, #{symbol}, #{side}, #{strategyType}, #{fastWindow}, #{slowWindow}, #{bandPeriod}, #{bandMultiplier},
+             #{orderQuantity}, #{maxSpend}, #{maxPositionSize}, #{maxConsecutiveFailures}, 0,
+             'ACTIVE', NOW(), NOW())
+    </insert>
+
+    <select id="findById" resultMap="StrategyResultMap">
+        SELECT * FROM trading_strategy WHERE id = #{id}
+    </select>
+
+    <select id="findByAccount" resultMap="StrategyResultMap">
+        SELECT * FROM trading_strategy WHERE account_id = #{accountId} ORDER BY created_on DESC
+    </select>
+
+    <select id="findActiveBySymbol" resultMap="StrategyResultMap">
+        SELECT * FROM trading_strategy WHERE symbol = #{symbol} AND status = 'ACTIVE'
+    </select>
+
+    <select id="countForAccount" resultType="int">
+        SELECT COUNT(*) FROM trading_strategy WHERE account_id = #{accountId}
+    </select>
+
+    <update id="updateStatus">
+        UPDATE trading_strategy
+        SET status = #{status}, disabled_reason = #{disabledReason}, updated_on = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="resetFailures">
+        UPDATE trading_strategy
+        SET consecutive_failures = 0, updated_on = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="incrementFailureAndMaybeDisable">
+        UPDATE trading_strategy
+        SET consecutive_failures = consecutive_failures + 1,
+            status = CASE WHEN consecutive_failures + 1 >= max_consecutive_failures THEN 'DISABLED' ELSE status END,
+            disabled_reason = CASE WHEN consecutive_failures + 1 >= max_consecutive_failures THEN #{disabledReason} ELSE disabled_reason END,
+            updated_on = NOW()
+        WHERE id = #{id}
+    </update>
+
+</mapper>

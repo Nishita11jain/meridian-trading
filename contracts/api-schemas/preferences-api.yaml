@@ -1,0 +1,266 @@
+openapi: 3.0.3
+
+info:
+  title: Customer Preferences API
+  version: 1.0.0
+  description: |
+    Customer personalisation for the Enterprise Trading Platform (Sprint 10 extension). One module
+    inside the Trade REST API, not a separate service: these routes are served on the same origin and
+    port as the Sprint 6 order and account routes, under the same `/api/v1` prefix, and are protected
+    by the same bearer-token verification.
+
+    This module is the single owner of a customer's notification channel, its contact detail, the
+    currency amounts are displayed in, and the UI theme. The notifications module resolves a channel
+    through this module in-process; that path is not an HTTP route.
+
+    ## Access control
+
+    Every route addresses an account in its path. The account a token may act on is its `accountId`
+    claim and nothing else. A token whose claim does not match the account in the path is refused with
+    `ACC-403`, the same answer the account routes give, so one customer cannot read or change another's
+    preferences.
+
+    ## Defaults
+
+    A customer who has never saved preferences has no stored row. A read then returns the platform
+    defaults (`IN_APP`, no contact, `INR`, `SYSTEM`) with a null `updatedOn`, which the UI shows as
+    "not set yet". The first save creates the row.
+
+servers:
+  - url: http://localhost:5500
+    description: Local development (Trade REST API).
+
+tags:
+  - name: Preferences
+    description: Read and update a customer's personalisation.
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/v1/preferences/{accountId}:
+    get:
+      tags: [Preferences]
+      summary: Read a customer's preferences
+      operationId: getPreferences
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+      responses:
+        '200':
+          description: The customer's preferences, or the platform defaults if none are stored.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PreferenceResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/preferences/{accountId}/notifications:
+    put:
+      tags: [Preferences]
+      summary: Set the notification channel and its contact detail
+      operationId: updateNotificationPreference
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateNotificationPreferenceRequest'
+      responses:
+        '200':
+          description: The saved preferences.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PreferenceResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/preferences/{accountId}/avatar:
+    put:
+      tags: [Preferences]
+      summary: Choose one of the predefined avatars
+      operationId: updateAvatarPreference
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAvatarPreferenceRequest'
+      responses:
+        '200':
+          description: The saved preferences.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PreferenceResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/preferences/{accountId}/display:
+    put:
+      tags: [Preferences]
+      summary: Set the display currency and theme
+      operationId: updateDisplayPreference
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDisplayPreferenceRequest'
+      responses:
+        '200':
+          description: The saved preferences.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PreferenceResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    AccountId:
+      name: accountId
+      in: path
+      required: true
+      description: The numeric trading account, which must match the token's accountId claim.
+      schema:
+        type: integer
+        format: int64
+
+  schemas:
+    NotificationChannel:
+      type: string
+      enum: [IN_APP, EMAIL, SMS, PUSH]
+      description: Where notifications are delivered. IN_APP and PUSH are delivered inside the platform.
+
+    Theme:
+      type: string
+      enum: [LIGHT, DARK, SYSTEM]
+
+    PreferenceResponse:
+      type: object
+      required: [accountId, defaultAccountId, notificationChannel, displayCurrency, theme]
+      properties:
+        accountId:
+          type: integer
+          format: int64
+        defaultAccountId:
+          type: integer
+          format: int64
+          description: The account the UI opens on. One account per customer, so this equals accountId.
+        notificationChannel:
+          $ref: '#/components/schemas/NotificationChannel'
+        contactEmail:
+          type: string
+          nullable: true
+        contactPhone:
+          type: string
+          nullable: true
+        displayCurrency:
+          type: string
+          description: A three-letter currency code the platform trades in.
+          example: INR
+        theme:
+          $ref: '#/components/schemas/Theme'
+        avatarKey:
+          $ref: '#/components/schemas/AvatarKey'
+        updatedOn:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the preferences were last saved, or null if defaults are being returned.
+
+    UpdateNotificationPreferenceRequest:
+      type: object
+      required: [notificationChannel]
+      properties:
+        notificationChannel:
+          $ref: '#/components/schemas/NotificationChannel'
+        contactEmail:
+          type: string
+          description: Required when the channel is EMAIL.
+        contactPhone:
+          type: string
+          description: Required when the channel is SMS.
+
+    UpdateDisplayPreferenceRequest:
+      type: object
+      required: [displayCurrency, theme]
+      properties:
+        displayCurrency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+          example: USD
+        theme:
+          $ref: '#/components/schemas/Theme'
+
+    AvatarKey:
+      type: string
+      description: One of the eight predefined avatars. The images ship with the frontend.
+      enum: [avatar_01, avatar_02, avatar_03, avatar_04, avatar_05, avatar_06, avatar_07, avatar_08]
+      example: avatar_01
+
+    UpdateAvatarPreferenceRequest:
+      type: object
+      required: [avatarKey]
+      properties:
+        avatarKey:
+          $ref: '#/components/schemas/AvatarKey'
+
+    ErrorResponse:
+      type: object
+      required: [errorCode, message]
+      properties:
+        errorCode:
+          type: string
+          enum: [AUTH-401, ACC-403, VAL-422]
+        message:
+          type: string
+
+  responses:
+    Unauthorised:
+      description: Missing, malformed, expired or forged token.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: The token does not own the account in the path.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ValidationError:
+      description: A value is well-formed but not acceptable.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'

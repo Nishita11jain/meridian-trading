@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.trading.executor.poller.FxRateMapper">
+
+    <!-- Fauxnance updates its FX pairs once a day, so one row per pair per UTC day is all there is to keep. -->
+    <insert id="upsert">
+        INSERT INTO fx_rates (pair, rate_date, rate, quote_as_of, fetched_on)
+        VALUES (#{pair}, (NOW() AT TIME ZONE 'UTC')::date, #{rate}, #{quoteAsOf}, NOW())
+        ON CONFLICT (pair, rate_date)
+        DO UPDATE SET rate = EXCLUDED.rate, quote_as_of = EXCLUDED.quote_as_of, fetched_on = NOW()
+    </insert>
+
+    <select id="countToday" resultType="int">
+        SELECT COUNT(*) FROM fx_rates WHERE rate_date = (NOW() AT TIME ZONE 'UTC')::date
+    </select>
+
+</mapper>

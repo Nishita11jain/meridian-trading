@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.trading.executor.poller.WatchedSymbolsMapper">
+
+    <!--
+      Every symbol the platform needs a live quote for: ones a customer holds,
+      ones on any watchlist, and ones with an active price alert. A watchlist
+      entry or an alert on a symbol nobody holds (Sprint 10) must still be
+      polled, or its price never updates and its alert never fires. UNION
+      de-duplicates across the three sources. All three columns reference
+      instruments.symbol, so every symbol returned is a real instrument.
+    -->
+    <select id="findDistinctWatchedSymbols" resultType="java.lang.String">
+        SELECT symbol FROM positions WHERE quantity &gt; 0
+        UNION
+        SELECT symbol FROM watchlist_items
+        UNION
+        SELECT symbol FROM price_alerts WHERE status = 'ACTIVE'
+        ORDER BY symbol
+    </select>
+
+</mapper>

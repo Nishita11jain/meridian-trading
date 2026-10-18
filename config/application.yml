@@ -1,0 +1,28 @@
+# Shared, environment-specific configuration for every service (host, port, credentials).
+# Values are read from the root .env (see .env.example); nothing is hardcoded here.
+frontend:
+  url: ${FRONTEND_URL}
+  port: ${FRONTEND_PORT}
+
+services:
+  auth:
+    url: ${AUTH_BASE_URL}
+    port: ${PORT}
+  order:
+    url: ${TRADE_API_BASE_URL}
+    port: ${ORDER_PORT}
+  executor:
+    url: ${EXECUTOR_BASE_URL}
+    port: ${EXECUTOR_PORT}
+
+database:
+  host: ${POSTGRES_HOST}
+  port: ${POSTGRES_PORT}
+  name: ${POSTGRES_DB}
+  user: ${POSTGRES_USER}
+  password: ${POSTGRES_PASSWORD}
+
+kafka:
+  host: ${KAFKA_HOST}
+  port: ${KAFKA_PORT}
+  bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}

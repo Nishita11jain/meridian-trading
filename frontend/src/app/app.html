@@ -1,0 +1,15 @@
+﻿<!-- Routing outlet for the trading UI application -->
+<router-outlet />
+
+@if (leavePageConfirm.prompt(); as prompt) {
+	<app-confirm-dialog
+		testId="unsaved-leave-dialog"
+		eyebrow="Unsaved order"
+		tone="danger"
+		title="Leave this page?"
+		[body]="prompt.message"
+		confirmLabel="OK"
+		cancelLabel="Cancel"
+		(confirmed)="confirmLeavePage()"
+		(dismissed)="cancelLeavePage()"></app-confirm-dialog>
+}

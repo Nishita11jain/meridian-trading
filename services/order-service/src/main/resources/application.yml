@@ -1,0 +1,61 @@
+# Every value comes from the environment (root .env, see .env.example); nothing here is a secret.
+spring:
+  application:
+    name: trade-api-service
+
+  # Two copies of HikariPoolDataSourceMetadataProviderConfiguration land on this
+  # service's classpath (org.springframework.boot.autoconfigure.jdbc.metadata and
+  # org.springframework.boot.jdbc.autoconfigure), which fails context startup
+  # without this. executor hits the same conflict and needs it too.
+  main:
+    allow-bean-definition-overriding: true
+
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:trading}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    producer:
+      properties:
+        acks: all
+        enable.idempotence: true
+        retries: 2147483647
+        max.in.flight.requests.per.connection: 5
+    # Sprint 10: this service now consumes trade-events for notifications and market-data for watchlist alerts.
+    # Consumer configuration is programmatic (KafkaConsumerConfig) to support multiple groups (notification-service, watchlist-service).
+
+server:
+  port: ${ORDER_PORT:8081}
+
+app:
+  docs:
+    # The OpenAPI document and Swagger UI. Public so the running service can show its own contract;
+    # set false in any deployed profile to require a token.
+    public: ${APP_DOCS_PUBLIC:true}
+  # Where the strategy engine reaches this service's own POST /api/v1/orders (decision log 0010).
+  internal-base-url: ${APP_INTERNAL_BASE_URL}
+  cors:
+    # Origins allowed to call this service directly, comma-separated (normally the frontend origin).
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
+  security:
+    jwt-secret: ${JWT_SECRET}
+    # Must equal the auth-service's JWT_ISSUER; tokens with any other (or no) issuer are refused.
+    jwt-issuer: ${JWT_ISSUER:auth-service}
+
+assistant:
+  # Free Gemini key from Google AI Studio. Read here and sent only as a header, never to the browser.
+  # Empty means the assistant answers "unavailable" and nothing else changes.
+  gemini-api-key: ${GEMINI_API_KEY:}
+  gemini-model: ${GEMINI_MODEL:gemini-3.5-flash-lite}
+  rate-limit-per-minute: ${ASSISTANT_RATE_LIMIT_PER_MINUTE:10}
+
+mybatis:
+  mapper-locations: classpath:mapper/**/*.xml
+
+# Currency conversion (decision log 0020). INR is the only currency that holds money. A dollar order locks the day's
+# stored USD/INR rate on the order, moved by this margin against the customer (up for a buy, down for a sell).
+fx:
+  margin-percent: ${FX_MARGIN_PERCENT:0.5}

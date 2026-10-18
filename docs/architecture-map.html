@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meridian Architecture Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout concept: one system diagram on the left, a detail panel on the right; three modes (explore, flows, build order) drive the same diagram. */
+:root {
+  --bg: #eef1f4; --surface: #ffffff; --ink: #14212b; --muted: #566876; --line: #c3ced7;
+  --accent: #0b7a75; --accent-soft: #d9efed; --hot: #c2610a; --hot-soft: #fbe9d4; --node: #f7f9fb;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0c1620; --surface: #132230; --ink: #e5edf2; --muted: #93a6b4; --line: #2b4054;
+    --accent: #3cc5ba; --accent-soft: #123a3d; --hot: #f5a524; --hot-soft: #3d2c10; --node: #172a3a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0c1620; --surface: #132230; --ink: #e5edf2; --muted: #93a6b4; --line: #2b4054;
+  --accent: #3cc5ba; --accent-soft: #123a3d; --hot: #f5a524; --hot-soft: #3d2c10; --node: #172a3a; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { color-scheme: light; }
+body { margin: 0; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 14px; line-height: 1.5; padding-inline: 16px; padding-block: 20px 32px; }
+.wrap { max-width: 1280px; margin: 0 auto; display: grid; gap: 16px; }
+header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
+h1 { font-size: 22px; font-weight: 600; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+.sub { color: var(--muted); margin: 2px 0 0; max-width: 62ch; }
+.tabs { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--surface); }
+.tabs button { font: inherit; font-weight: 500; padding: 8px 14px; border: 0; background: transparent; color: var(--muted); cursor: pointer; border-right: 1px solid var(--line); }
+.tabs button:last-child { border-right: 0; }
+.tabs button[aria-selected="true"] { background: var(--accent); color: #fff; }
+:root[data-theme="dark"] .tabs button[aria-selected="true"] { color: #06201f; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tabs button[aria-selected="true"] { color: #06201f; } }
+button:focus-visible, .node:focus-visible, .chip:focus-visible { outline: 2px solid var(--hot); outline-offset: 2px; }
+.main { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(300px, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 920px) { .main { grid-template-columns: minmax(0, 1fr); } }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.stage { padding: 12px; display: grid; gap: 12px; min-width: 0; }
+.svgbox { overflow-x: auto; }
+svg { display: block; width: 100%; min-width: 640px; height: auto; }
+figure { margin: 0; }
+figcaption { color: var(--muted); font-size: 12.5px; padding: 8px 4px 0; }
+
+/* diagram */
+.node rect.box { fill: var(--node); stroke: var(--line); stroke-width: 1.5; transition: stroke .15s, fill .15s, opacity .2s; }
+.node.ext rect.box { stroke-dasharray: 5 4; }
+.node { cursor: pointer; transition: opacity .2s; }
+.node:hover rect.box { stroke: var(--accent); }
+.node.sel rect.box { stroke: var(--accent); stroke-width: 2.5; fill: var(--accent-soft); }
+.node.hot rect.box { stroke: var(--hot); stroke-width: 2.5; }
+.node text { fill: var(--ink); pointer-events: none; }
+.node .t { font: 600 14px var(--sans); }
+.node .s { font: 400 11.5px var(--sans); fill: var(--muted); }
+.node .p { font: 500 11px var(--mono); fill: var(--accent); }
+.node.dim { opacity: .18; }
+.edge path { fill: none; stroke: var(--muted); stroke-width: 1.5; transition: stroke .15s, opacity .2s; }
+.edge.dotted path { stroke-dasharray: 3 4; }
+.edge text { font: 500 10.5px var(--mono); fill: var(--muted); }
+.edge.dim { opacity: .12; }
+.edge.on path { stroke: var(--hot); stroke-width: 3; }
+.edge.on text { fill: var(--hot); font-weight: 600; }
+.edge.faint path { opacity: .35; }
+.edge.faint text { opacity: .45; }
+.badge circle { fill: var(--hot); }
+.badge text { font: 600 11px var(--sans); fill: #fff; text-anchor: middle; }
+#arrow path, #arrowhot path { stroke: none; }
+#arrow path { fill: var(--muted); }
+#arrowhot path { fill: var(--hot); }
+
+/* chips */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 0 4px; }
+.chips .lab { font: 500 11px var(--mono); color: var(--muted); margin-right: 4px; text-transform: uppercase; letter-spacing: .06em; }
+.chip { font: 500 12px var(--sans); padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--node); color: var(--ink); cursor: pointer; }
+.chip:hover { border-color: var(--accent); }
+.chip.sel { background: var(--accent); color: #fff; border-color: var(--accent); }
+:root[data-theme="dark"] .chip.sel { color: #06201f; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .chip.sel { color: #06201f; } }
+
+/* controls */
+.ctl { border-top: 1px solid var(--line); padding: 12px 4px 4px; display: grid; gap: 10px; }
+.ctl[hidden] { display: none; }
+.pillrow { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill { font: 500 12.5px var(--sans); padding: 6px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--node); color: var(--ink); cursor: pointer; }
+.pill[aria-pressed="true"] { border-color: var(--hot); background: var(--hot-soft); }
+.stepbar { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; }
+.nav { font: 600 13px var(--sans); padding: 8px 14px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.nav:disabled { opacity: .4; cursor: default; }
+.nav.go { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] .nav.go { color: #06201f; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .nav.go { color: #06201f; } }
+.steptext { min-height: 3.2em; }
+.steptext b { color: var(--hot); font-family: var(--mono); font-weight: 600; margin-right: 6px; }
+.steptext code, .panel code { font-family: var(--mono); font-size: 12px; background: var(--bg); padding: 1px 5px; border-radius: 4px; }
+.dots { display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; }
+.dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+.dots i.d { background: var(--hot); }
+
+/* panel */
+.panel { padding: 18px; display: grid; gap: 14px; position: sticky; top: 12px; min-width: 0; }
+@media (max-width: 920px) { .panel { position: static; } }
+.panel h2 { margin: 0; font-size: 18px; font-weight: 600; text-wrap: balance; }
+.panel .meta { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag { font: 500 11px var(--mono); padding: 2px 8px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); }
+.tag.ext { background: var(--bg); color: var(--muted); }
+.panel p { margin: 0; }
+.panel h3 { margin: 0 0 4px; font: 500 11px var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: .07em; }
+.panel ul { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
+.panel .files { list-style: none; padding: 0; }
+.panel .files li { font: 400 12px var(--mono); overflow-wrap: anywhere; color: var(--ink); }
+.panel .say { border-left: 3px solid var(--hot); padding: 4px 0 4px 10px; background: var(--hot-soft); border-radius: 0 6px 6px 0; }
+.empty { color: var(--muted); }
+.hint { color: var(--muted); font-size: 12.5px; text-align: center; }
+kbd { font: 500 11px var(--mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--surface); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Meridian architecture map</h1>
+      <p class="sub">Every part of the trading platform and how an order moves through it. Click a box to see how it was built, or step through a flow.</p>
+    </div>
+    <div class="tabs" role="tablist" aria-label="View">
+      <button role="tab" id="tab-explore" aria-selected="true" data-mode="explore">Explore</button>
+      <button role="tab" id="tab-flows" aria-selected="false" data-mode="flows">Flows</button>
+      <button role="tab" id="tab-build" aria-selected="false" data-mode="build">Build order</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <section class="card stage" aria-label="System diagram">
+      <figure>
+        <div class="svgbox">
+          <svg id="dia" viewBox="0 0 1000 650" role="img" aria-label="Architecture of the Meridian trading platform: the Angular UI calls the auth service and the Trade API; the Trade API stores orders in PostgreSQL and publishes them to Kafka; the executor consumes them, settles in PostgreSQL and publishes outcomes back to Kafka; market data and FX come from the Fauxnance API.">
+            <defs>
+              <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z"/></marker>
+              <marker id="arrowhot" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z"/></marker>
+            </defs>
+            <g id="edges"></g>
+            <g id="nodes"></g>
+            <g id="badge" class="badge" hidden></g>
+          </svg>
+        </div>
+        <figcaption id="caption">Solid boxes are our code. Dashed boxes are outside services. Arrows show who calls whom.</figcaption>
+      </figure>
+
+      <div class="chips" id="chips" role="group" aria-label="Trade API modules"><span class="lab">Trade API modules</span></div>
+
+      <div class="ctl" id="ctl-flows" hidden>
+        <div class="pillrow" id="flowpills" role="group" aria-label="Choose a flow"></div>
+        <div class="steptext" id="steptext" aria-live="polite"></div>
+        <div class="stepbar">
+          <button class="nav" id="fprev">Back</button>
+          <div class="dots" id="fdots"></div>
+          <button class="nav go" id="fnext">Next</button>
+        </div>
+      </div>
+
+      <div class="ctl" id="ctl-build" hidden>
+        <div class="pillrow" id="buildpills" role="group" aria-label="Choose a sprint"></div>
+        <div class="steptext" id="buildtext" aria-live="polite"></div>
+        <div class="stepbar">
+          <button class="nav" id="bprev">Previous sprint</button>
+          <div class="dots" id="bdots"></div>
+          <button class="nav go" id="bnext">Next sprint</button>
+        </div>
+      </div>
+      <p class="hint">Present with <kbd>←</kbd> <kbd>→</kbd> to step, <kbd>Esc</kbd> to clear the selection.</p>
+    </section>
+
+    <aside class="card panel" id="panel" aria-live="polite"></aside>
+  </div>
+</div>
+
+<script>
+(function () {
+  var NS = 'http://www.w3.org/2000/svg';
+
+  /* ---------- data ---------- */
+  var NODES = {
+    ui:   { x: 30,  y: 270, w: 160, h: 90,  t: 'Angular UI',      s: 'trading screens',        p: ':4200', sprint: 9 },
+    auth: { x: 270, y: 60,  w: 170, h: 84,  t: 'Auth service',    s: 'NestJS · JWT',           p: ':3000', sprint: 8 },
+    api:  { x: 270, y: 250, w: 200, h: 120, t: 'Trade API',       s: 'Spring Boot · REST',     p: ':8081', sprint: 6 },
+    kafka:{ x: 560, y: 250, w: 190, h: 120, t: 'Kafka',           s: 'orders · trade-events · market-data', p: ':9092', sprint: 7 },
+    exec: { x: 560, y: 520, w: 190, h: 100, t: 'Executor',        s: 'settles and polls',      p: ':8082', sprint: 7 },
+    db:   { x: 270, y: 520, w: 200, h: 100, t: 'PostgreSQL',      s: 'trading + auth schema',  p: ':5432', sprint: 3 },
+    etl:  { x: 30,  y: 520, w: 180, h: 100, t: 'Analytics ETL',   s: 'Python · DuckDB',        p: 'batch', sprint: 4 },
+    dom:  { x: 30,  y: 395, w: 160, h: 76,  t: 'Domain engine',   s: 'pure Java rules',        p: 'library', sprint: 5 },
+    fx:   { x: 820, y: 250, w: 150, h: 100, t: 'Fauxnance API',   s: 'quotes · candles · FX',  p: 'external', sprint: 4, ext: true },
+    gem:  { x: 560, y: 60,  w: 170, h: 70,  t: 'Gemini API',      s: 'Ledger Assistant',       p: 'external', sprint: 10, ext: true }
+  };
+
+  var EDGES = {
+    'ui-auth':   { d: 'M110 270 V102 H270', from: 'ui',   to: 'auth', lab: 'login · register', lx: 190, ly: 94,  sprint: 9 },
+    'ui-api':    { d: 'M190 315 H270',      from: 'ui',   to: 'api',  lab: '/api',             lx: 230, ly: 307, sprint: 9 },
+    'auth-api':  { d: 'M355 144 V250',      from: 'auth', to: 'api',  lab: 'verify accountId', lx: 363, ly: 200, anchor: 'start', sprint: 8 },
+    'dom-api':   { d: 'M190 435 H230 V350 H270', from: 'dom', to: 'api', lab: 'compiled in', lx: 196, ly: 427, anchor: 'start', dotted: true, sprint: 6 },
+    'api-db':    { d: 'M370 370 V520',      from: 'api',  to: 'db',   lab: 'SQL',              lx: 378, ly: 450, anchor: 'start', sprint: 6 },
+    'api-kafka': { d: 'M470 290 H560',      from: 'api',  to: 'kafka',lab: 'orders',           lx: 515, ly: 282, sprint: 7 },
+    'kafka-api': { d: 'M560 340 H470',      from: 'kafka',to: 'api',  lab: 'events',           lx: 515, ly: 358, sprint: 10 },
+    'kafka-exec':{ d: 'M625 370 V520',      from: 'kafka',to: 'exec', lab: 'orders',           lx: 617, ly: 450, anchor: 'end', sprint: 7 },
+    'exec-kafka':{ d: 'M695 520 V370',      from: 'exec', to: 'kafka',lab: 'trade-events',     lx: 703, ly: 450, anchor: 'start', sprint: 7 },
+    'exec-db':   { d: 'M560 570 H470',      from: 'exec', to: 'db',   lab: 'settle',           lx: 515, ly: 562, sprint: 7 },
+    'exec-fx':   { d: 'M750 550 H895 V350', from: 'exec', to: 'fx',   lab: 'quotes · FX',      lx: 822, ly: 542, sprint: 7 },
+    'api-fx':    { d: 'M455 250 V222 H895 V250', from: 'api', to: 'fx', lab: 'candles',        lx: 700, ly: 214, sprint: 10 },
+    'api-gem':   { d: 'M420 250 V190 H600 V130', from: 'api', to: 'gem', lab: 'chat',          lx: 510, ly: 182, sprint: 10 },
+    'db-etl':    { d: 'M270 570 H210',      from: 'db',   to: 'etl',  lab: 'trades',           lx: 240, ly: 562, sprint: 4 }
+  };
+
+  var DETAIL = {
+    ui: {
+      title: 'Angular trading UI', tags: ['Sprint 9', 'Angular · TypeScript', 'port 4200'],
+      what: 'The customer-facing app. Twelve screens: landing, sign in, dashboard, order ticket, blotter, portfolio, watchlists and market, statements, notifications, trade advice, strategies, and profile with preferences.',
+      how: [
+        'The dev server proxies /auth to port 3000 and /api to port 8081, so the browser only ever talks to its own origin and needs no CORS rule.',
+        'A bearer-token interceptor attaches the token only to /api paths and /auth/me. Nothing else gets it.',
+        'API clients are generated from the OpenAPI contracts in contracts/api-schemas.',
+        'A display-currency service converts money to the currency chosen in preferences (INR or USD) at the stored daily rate.',
+        'Route guards protect every page except landing and sign in; the order ticket warns before you leave with unsaved input.'
+      ],
+      files: ['frontend/src/app/app.routes.ts', 'frontend/src/app/features/order-ticket/order-ticket.ts', 'frontend/src/app/core/currency/display-currency.service.ts', 'frontend/proxy.conf.json'],
+      say: 'Show this one live: place an order on the ticket, then open the blotter and portfolio.'
+    },
+    auth: {
+      title: 'Auth service', tags: ['Sprint 8', 'NestJS · TypeScript', 'port 3000'],
+      what: 'Registers customers, signs them in and issues the tokens every other service trusts.',
+      how: [
+        'Routes: register, login, refresh and me.',
+        'Passwords are stored as argon2id hashes. Tokens are HS256 JWTs carrying the account id, an issuer and a short expiry.',
+        'Login is throttled per address (5 per 15 minutes by default, set in .env).',
+        'Registration asks the Trade API whether the account id exists and is active before creating a login.',
+        'The seeded demo logins live in the auth schema of the same PostgreSQL database.'
+      ],
+      files: ['services/auth-service/src/auth/auth.controller.ts', 'services/auth-service/src/auth/auth.service.ts', 'services/auth-service/src/users/account-validation.service.ts', 'security-review/auth-service-review.md'],
+      say: 'Security story: hashing, issuer check, throttle, and the written OWASP review.'
+    },
+    api: {
+      title: 'Trade API (order service)', tags: ['Sprint 6, extended in 10', 'Spring Boot · MyBatis', 'port 8081'],
+      what: 'The single REST backend for orders, accounts and every Sprint 10 feature. It never executes an order itself; it validates, stores and hands the order to Kafka.',
+      how: [
+        'Layers: controller, service, mapper (MyBatis), PostgreSQL. Two automated checks enforce the layering.',
+        'Every request is verified as a JWT with the shared secret and issuer check (Spring OAuth2 resource server); accounts are checked against the token.',
+        'Placing an order stores it as NEW, then publishes ORDER_PLACED after the database commit. A reconciler republishes any that failed to reach the broker.',
+        'Optimistic locking on the account stops two orders spending the same cash. Duplicate orders are rejected by a database constraint.',
+        'It also consumes trade-events (to notify customers) and market-data (price alerts and strategies).'
+      ],
+      files: ['services/order-service/src/main/java/com/trading/api/controller/OrderController.java', '.../service/OrderServiceImpl.java', '.../service/KafkaOrderEventPublisher.java', '.../service/OrderPublishReconciler.java', '.../config/SecurityConfig.java'],
+      say: 'If asked how order placement works: OrderController, then OrderServiceImpl, then the publisher.'
+    },
+    kafka: {
+      title: 'Kafka event backbone', tags: ['Sprint 7', '3 topics + dead letters', 'port 9092'],
+      what: 'Decouples taking an order from executing it, so a slow or restarting executor never blocks the customer.',
+      how: [
+        'orders: accepted orders waiting for execution. Keyed by account id, 3 partitions, 7 days.',
+        'trade-events: filled, rejected and cancelled outcomes. Keyed by account id, 3 partitions, 30 days.',
+        'market-data: polled quotes. Keyed by symbol, 6 partitions, 1 day.',
+        'Each topic has a .DLT dead-letter topic for messages that cannot be processed.',
+        'Keying by account keeps one customer\'s orders in order, so a sell can never settle before the buy that funds it. Partition counts are fixed once and not raised while orders are in flight.'
+      ],
+      files: ['infrastructure/kafka/scripts/create-topics.sh', 'design/kafka.md', 'contracts/event-schemas/'],
+      say: 'The broker runs on the Linux VM; the topics are created by create-topics.sh.'
+    },
+    exec: {
+      title: 'Trade executor', tags: ['Sprint 7', 'Spring Boot', 'port 8082'],
+      what: 'Consumes orders, settles them in the database and publishes the outcome. It also owns every job that talks to Fauxnance.',
+      how: [
+        'OrderPlacedConsumer reads the orders topic (group trade-executor) and calls OrderExecutionService, which settles the order in one database transaction: cash, position, trade and ledger row.',
+        'On an optimistic-lock clash it retries with a growing wait; when retries run out the message goes to the dead-letter topic.',
+        'The outcome is published to trade-events with its own retries. A settled order is never settled twice if the publish fails.',
+        'QueuedOrderReleaser runs every 30 seconds and settles orders that were placed while their market was closed.',
+        'MarketDataPoller refreshes quotes into market_price and the market-data topic. FxRatePoller stores the daily USD/INR rate at 00:15 UTC.'
+      ],
+      files: ['services/executor-service/.../consumer/OrderPlacedConsumer.java', '.../service/OrderExecutionService.java', '.../service/OrderSettlementService.java', '.../service/QueuedOrderReleaser.java', '.../poller/MarketDataPoller.java', '.../poller/FxRatePoller.java'],
+      say: 'A known limit: outcomes waiting to be published are held in memory, so a restart at the wrong moment loses that retry. A persisted outbox would fix it.'
+    },
+    db: {
+      title: 'PostgreSQL', tags: ['Sprint 3, 21 migrations', 'PostgreSQL', 'port 5432'],
+      what: 'The single source of truth for accounts, orders, trades, positions, ledger and every extension.',
+      how: [
+        'Core tables: accounts, instruments, orders, positions, trades, account_transactions.',
+        'Extension tables: market_price, price_history, watchlists, price_alerts, notifications, customer_preferences, trade signals, strategies, fx_rates, market_holidays, processed_events.',
+        'Money is exact decimal. Duplicate orders are prevented by constraint, not by a read. Positions are stored, not recomputed. Instruments are soft-delisted, never deleted.',
+        'apply.sh runs the migrations in order, then loads seed data and five demo logins, all on an empty database.',
+        'The same instance holds the auth schema used by the auth service.'
+      ],
+      files: ['databases/postgresql/migrations/', 'databases/postgresql/seed-data.sql', 'databases/postgresql/seed/README.md', 'databases/postgresql/DESIGN.md'],
+      say: 'Seed: 50 NSE shares, 50 US shares and ETFs, 25 crypto pairs, 69 real-priced fills.'
+    },
+    etl: {
+      title: 'Analytics ETL', tags: ['Sprint 4 and 7', 'Python · DuckDB', 'batch'],
+      what: 'A separate analytics pipeline. It pulls market data and loads trades into a DuckDB database for reporting, away from the live system.',
+      how: [
+        'Extract, transform, load are separate packages that follow a shared contract.',
+        'Raw Fauxnance responses are cached by symbol and range.',
+        'Sprint 7 added an incremental FACT_TRADES load from PostgreSQL.',
+        'It does not serve the UI; it feeds the analytics charts and the dashboard.'
+      ],
+      files: ['etl-layer/', 'etl-layer/src/fact_trades/', 'contracts/analytics-schema.sql'],
+      say: 'Mention it as the reporting side: the live app and the analytics are deliberately separate.'
+    },
+    dom: {
+      title: 'Domain engine', tags: ['Sprint 5', 'Java, no framework'],
+      what: 'The trading rules in plain Java: money, orders, positions, instruments and the checks on them.',
+      how: [
+        'Maven\'s banned-dependency rule fails the build if any framework class is imported, so the rules stay testable on their own.',
+        'Money is an immutable value type, never a double.',
+        'The Trade API consumes it as copied source rather than a published artifact.',
+        'Seams such as the duplicate-order check are interfaces the API implements.'
+      ],
+      files: ['domain-engine/', 'domain-engine/pom.xml', 'decision-log/0001-seams-as-java-interfaces.md'],
+      say: 'A good answer to "where do the business rules live".'
+    },
+    fx: {
+      title: 'Fauxnance API', tags: ['External', 'AWS API Gateway'],
+      what: 'The course-provided market data service: quotes, daily candles and FX rates.',
+      how: [
+        'The executor polls it for quotes and the daily USD/INR rate, within a quota tracker.',
+        'The Trade API calls it for candle history behind trade advice and charts.',
+        'The API key stays on the server and is never sent to the browser.'
+      ],
+      files: ['services/executor-service/.../client/FauxnanceQuoteClient.java', 'services/executor-service/.../client/FauxnanceQuotaTracker.java', 'services/order-service/.../advice/FauxnanceCandleClient.java'],
+      say: 'The key is read from FAUXNANCE_API_KEY in .env.'
+    },
+    gem: {
+      title: 'Gemini API', tags: ['External', 'Google'],
+      what: 'Powers the Ledger Assistant chatbot (outside today\'s review scope).',
+      how: [
+        'The Trade API calls it server side; the key never reaches the browser.',
+        'Rate limited per customer. Leave GEMINI_API_KEY empty and the assistant reports itself unavailable while everything else works.'
+      ],
+      files: ['services/order-service/.../assistant/GeminiClient.java', 'services/order-service/.../assistant/AssistantService.java', 'decision-log/0008-gemini-api-egress.md'],
+      say: 'Not part of today\'s review, but it is in the security notes.'
+    }
+  };
+
+  var MODULES = [
+    { id: 'm-orders', label: 'Orders', title: 'Orders and accounts', tags: ['Sprint 6'], what: 'Place, list and cancel orders; read balances and positions.',
+      how: ['POST /api/v1/orders, DELETE /api/v1/orders/{id}', 'GET /api/v1/accounts/{id}, /balance, /positions, /orders', 'Statuses: NEW, FILLED, REJECTED, CANCELLED. Rejected orders are recorded with a reason.'],
+      files: ['.../controller/OrderController.java', '.../controller/AccountController.java', '.../service/OrderServiceImpl.java'] },
+    { id: 'm-market', label: 'Market and watchlists', title: 'Market data and watchlists', tags: ['Sprint 10'], what: 'Instrument catalogue, latest quotes, price history, watchlists with presets and price alerts.',
+      how: ['/api/v1/market: instruments, quotes, history, freshness', '/api/v1/watchlists: lists, presets, ordering, flags', '/api/v1/alerts: delete an alert. Alerts are evaluated from the market-data topic.'],
+      files: ['.../extensions/watchlists/', '.../extensions/watchlists/MarketDataConsumer.java'] },
+    { id: 'm-portfolio', label: 'Portfolio', title: 'Portfolio and P&L', tags: ['Sprint 10'], what: 'Priced positions, profit and loss, and value over time, all converted to rupees at the daily rate.',
+      how: ['/api/v1/portfolio/{accountId}: summary, positions, pnl, history', 'Prices come from the stored market_price table.', 'The value chart builds from fills and stored quotes until history exists.'],
+      files: ['.../extensions/portfolio/PortfolioController.java', '.../extensions/portfolio/PortfolioService.java', 'decision-log/0025-portfolio-in-rupees-by-daily-rate.md'] },
+    { id: 'm-notify', label: 'Notifications', title: 'Notifications', tags: ['Sprint 10'], what: 'Tells the customer when an order fills, is rejected or an alert triggers.',
+      how: ['TradeEventsConsumer reads trade-events and writes a notification.', 'In-app is the default channel. Email, SMS and push are queued, not sent.', 'List, read and unread routes under /api/v1/notifications.'],
+      files: ['.../extensions/notifications/TradeEventsConsumer.java', '.../extensions/notifications/NotificationsService.java', 'decision-log/0014-push-and-email-are-queued.md'] },
+    { id: 'm-prefs', label: 'Preferences', title: 'Customer preferences', tags: ['Sprint 10'], what: 'Notification channel and contact, display currency, theme and avatar.',
+      how: ['/api/v1/preferences/{accountId}: notifications, display, avatar', 'Display currency is read by the UI to convert every amount.'],
+      files: ['.../extensions/preferences/PreferencesController.java', 'decision-log/0013-preferences-relational-table.md'] },
+    { id: 'm-statements', label: 'Statements', title: 'Statements', tags: ['Sprint 10'], what: 'Trades and cash ledger for a date range, as screens and CSV.',
+      how: ['/api/v1/accounts/{id}/trades and /cash-ledger', 'CSV downloads for both. Capital gains are not calculated, which is a known limitation.'],
+      files: ['.../extensions/statements/StatementsController.java', '.../extensions/statements/CsvWriter.java'] },
+    { id: 'm-advice', label: 'Advice', title: 'Trade advice', tags: ['Sprint 10'], what: 'A moving-average signal per watched symbol, computed on request.',
+      how: ['/api/v1/advice/{accountId}/signals and an analyse action per symbol', 'Candle history comes from Fauxnance and is cached.', 'Computed when asked, not on a schedule (decision 0016).'],
+      files: ['.../extensions/advice/MovingAverageSignalCalculator.java', '.../extensions/advice/AdviceService.java'] },
+    { id: 'm-strategies', label: 'Strategies', title: 'Automated strategies', tags: ['Sprint 10'], what: 'Rules that place orders for you when a price condition is met.',
+      how: ['/api/v1/strategies: create, enable or disable, read the log', 'Consumes market-data and places orders through the same POST /api/v1/orders route, so every order rule still applies.', 'Stops after repeated failures.'],
+      files: ['.../extensions/strategies/StrategyMarketDataConsumer.java', '.../extensions/strategies/InternalOrderClient.java', 'decision-log/0010-strategy-engine-internal-identity.md'] },
+    { id: 'm-fx', label: 'FX', title: 'Currency conversion', tags: ['Decision 0020'], what: 'INR holds all money. A dollar order locks the day\'s USD/INR rate with a 0.5% margin.',
+      how: ['/api/v1/market/fx-rates exposes the mid rate and margin.', 'The executor settles in rupees at the locked rate and keeps the rate on the order and the trade.'],
+      files: ['.../fx/FxRatesController.java', 'services/executor-service/.../poller/FxRatePoller.java', 'databases/postgresql/migrations/020_create_fx_rates.sql'] }
+  ];
+
+  var FLOWS = [
+    { id: 'signin', label: 'Sign in', steps: [
+      { e: 'ui-auth', t: 'The customer submits a username and password. The UI posts them to <code>POST /auth/login</code>.' },
+      { e: 'ui-auth', t: 'The auth service checks the argon2id hash and throttle, then returns an access token and a refresh token. The access token carries the account id.', rev: true },
+      { e: 'ui-api', t: 'Every later call goes to the Trade API with the token as a bearer header. The API checks signature, issuer and expiry, and that the account in the token matches the account in the URL.' }
+    ] },
+    { id: 'order', label: 'Place an order', steps: [
+      { e: 'ui-api', t: 'The ticket sends <code>POST /api/v1/orders</code> with symbol, side, quantity and limit price.' },
+      { e: 'api-db', t: 'The Trade API checks the account, funds, market hours and duplicates, and stores the order as <b>NEW</b>. Dollar orders lock the day\'s rate here.' },
+      { e: 'api-kafka', t: 'After the database commit, the API publishes <code>ORDER_PLACED</code> to the <b>orders</b> topic, keyed by account id. A reconciler retries any publish that failed.' },
+      { e: 'kafka-exec', t: 'The executor consumes it (group <code>trade-executor</code>). Ordering per account is guaranteed by the key.' },
+      { e: 'exec-db', t: 'It settles in one transaction: cash, position, trade and ledger row, with optimistic-lock retries. The order becomes <b>FILLED</b> or <b>REJECTED</b>.' },
+      { e: 'exec-kafka', t: 'The outcome is published to <b>trade-events</b>. A message that cannot be processed lands on the dead-letter topic.' },
+      { e: 'kafka-api', t: 'The Trade API consumes the event and writes a notification for the customer.' },
+      { e: 'ui-api', t: 'The UI reads the blotter, portfolio and notifications and shows the new fill.' }
+    ] },
+    { id: 'queued', label: 'Order while market closed', steps: [
+      { e: 'ui-api', t: 'The customer places an order outside trading hours. The ticket says when the market opens and offers to queue it.' },
+      { e: 'api-db', t: 'The API stores the order as NEW and does not send it to the executor yet (decision 0007).' },
+      { e: 'exec-db', t: '<code>QueuedOrderReleaser</code> checks every 30 seconds. When the market opens it settles the order in the database.' },
+      { e: 'exec-kafka', t: 'The outcome is published like a live order, so the customer is still notified.' },
+      { e: 'kafka-api', t: 'The notification consumer records it. Checked live on 7 October.' }
+    ] },
+    { id: 'prices', label: 'Live prices and alerts', steps: [
+      { e: 'exec-fx', t: 'The market-data poller asks Fauxnance for quotes on a timer, within the quota tracker.' },
+      { e: 'exec-db', t: 'Quotes are written to <code>market_price</code>, which portfolio valuation reads.' },
+      { e: 'exec-kafka', t: 'Each quote is also published to the <b>market-data</b> topic, keyed by symbol.' },
+      { e: 'kafka-api', t: 'The Trade API consumes it twice: watchlist price alerts and the strategy engine.' },
+      { e: 'ui-api', t: 'The watchlist and market board read the latest quotes and show them in the chosen currency.' }
+    ] },
+    { id: 'advice', label: 'Trade advice', steps: [
+      { e: 'ui-api', t: 'The customer clicks Analyse on a watched symbol.' },
+      { e: 'api-fx', t: 'The API fetches candle history from Fauxnance, or uses its cache.' },
+      { e: 'api-db', t: 'A moving-average signal is computed, stored in the trade-signals table and returned with a plain-language reason.' }
+    ] },
+    { id: 'analytics', label: 'Analytics', steps: [
+      { e: 'db-etl', t: 'The ETL reads trades from PostgreSQL incrementally (FACT_TRADES) and loads them into DuckDB for reporting, away from the live system.' }
+    ] }
+  ];
+
+  var SPRINTS = [
+    { n: 3, label: 'Sprint 3', title: 'Trade database', text: 'Start with the data: accounts, instruments, orders and positions, with exact decimals, optimistic-lock versions and a constraint against duplicate orders.' },
+    { n: 4, label: 'Sprint 4', title: 'Analytics ETL', text: 'A Python pipeline pulls market data from Fauxnance into DuckDB, so the team understood the data before building on it.' },
+    { n: 5, label: 'Sprint 5', title: 'Domain engine', text: 'The trading rules as pure Java, with a build rule that bans framework imports. This is where Money, Order and Position live.' },
+    { n: 6, label: 'Sprint 6', title: 'Trade API', text: 'A Spring Boot REST service wrapping the domain and the database: JWT verification, optimistic locking, and orders that reach a real terminal status.' },
+    { n: 7, label: 'Sprint 7', title: 'Event backbone', text: 'Kafka decouples taking orders from executing them. The executor was split into its own service, with a market-data poller and an incremental FACT_TRADES load.' },
+    { n: 8, label: 'Sprint 8', title: 'Auth service', text: 'A real token issuer replaces the test stub: registration, login, refresh, argon2id hashing, throttling and a written security review.' },
+    { n: 9, label: 'Sprint 9', title: 'Trading UI', text: 'The Angular app: sign in, dashboard, order ticket and blotter, wired to both services through a dev proxy.' },
+    { n: 10, label: 'Sprint 10', title: 'Extensions', text: 'Watchlists, alerts, portfolio and P&amp;L, notifications, preferences, statements, trade advice, strategies and the assistant, all as modules in the Trade API.' },
+    { n: 11, label: 'Latest', title: 'Currency and seed data', text: 'INR-based money with locked USD/INR order rates, a display-currency preference across the UI, and a seed of 125 instruments and 69 real-priced fills.' }
+  ];
+
+  /* ---------- state ---------- */
+  var state = { mode: 'explore', sel: null, flow: 'order', step: 0, sprint: 11 };
+  var edgeEls = {}, nodeEls = {};
+
+  /* ---------- build svg ---------- */
+  function el(name, attrs, parent) {
+    var n = document.createElementNS(NS, name);
+    for (var k in attrs) n.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(n);
+    return n;
+  }
+
+  var gEdges = document.getElementById('edges'), gNodes = document.getElementById('nodes');
+  Object.keys(EDGES).forEach(function (id) {
+    var e = EDGES[id];
+    var g = el('g', { 'class': 'edge' + (e.dotted ? ' dotted' : ''), 'data-id': id }, gEdges);
+    var p = el('path', { d: e.d, 'marker-end': 'url(#arrow)' }, g);
+    var t = el('text', { x: e.lx, y: e.ly, 'text-anchor': e.anchor || 'middle' }, g);
+    t.textContent = e.lab;
+    edgeEls[id] = { g: g, path: p };
+  });
+
+  Object.keys(NODES).forEach(function (id) {
+    var n = NODES[id];
+    var g = el('g', { 'class': 'node' + (n.ext ? ' ext' : ''), 'data-id': id, tabindex: 0, role: 'button', 'aria-label': n.t + ', ' + n.s }, gNodes);
+    el('rect', { 'class': 'box', x: n.x, y: n.y, width: n.w, height: n.h, rx: 8 }, g);
+    var t = el('text', { 'class': 't', x: n.x + 14, y: n.y + 26 }, g); t.textContent = n.t;
+    if (id === 'kafka') {
+      ['orders ×3', 'trade-events ×3', 'market-data ×6'].forEach(function (l, i) {
+        var s = el('text', { 'class': 's', x: n.x + 14, y: n.y + 52 + i * 17, style: 'font-family:var(--mono);font-size:11px' }, g); s.textContent = l;
+      });
+    } else {
+      var s = el('text', { 'class': 's', x: n.x + 14, y: n.y + 46 }, g); s.textContent = n.s;
+    }
+    var p = el('text', { 'class': 'p', x: n.x + 14, y: n.y + n.h - 12 }, g); p.textContent = n.p;
+    g.addEventListener('click', function () { select(id); });
+    g.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); select(id); } });
+    nodeEls[id] = g;
+  });
+
+  /* ---------- chips ---------- */
+  var chipsBox = document.getElementById('chips'), chipEls = {};
+  MODULES.forEach(function (m) {
+    var b = document.createElement('button');
+    b.className = 'chip'; b.type = 'button'; b.textContent = m.label;
+    b.addEventListener('click', function () { select(m.id); });
+    chipsBox.appendChild(b); chipEls[m.id] = b;
+  });
+
+  /* ---------- panel ---------- */
+  var panel = document.getElementById('panel');
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+  function listHtml(items, cls) { return '<ul' + (cls ? ' class="' + cls + '"' : '') + '>' + items.map(function (i) { return '<li>' + (cls ? esc(i) : i.replace(/&(?!amp;)/g, '&amp;')) + '</li>'; }).join('') + '</ul>'; }
+
+  function talksTo(id) {
+    var out = [];
+    Object.keys(EDGES).forEach(function (k) {
+      var e = EDGES[k];
+      if (e.from === id) out.push('Calls ' + NODES[e.to].t + ' (' + e.lab + ')');
+      if (e.to === id && NODES[e.from]) out.push('Called by ' + NODES[e.from].t + ' (' + e.lab + ')');
+    });
+    return out;
+  }
+
+  function renderPanel() {
+    var id = state.sel;
+    if (!id) {
+      panel.innerHTML = '<h2>Pick a part</h2><p class="empty">Click any box or module to see what it does, how it was built, and which files to open if you are asked about it.</p>' +
+        '<div><h3>Ports</h3><ul><li>Frontend <code>4200</code></li><li>Auth service <code>3000</code></li><li>Trade API <code>8081</code></li><li>Executor <code>8082</code></li></ul></div>';
+      return;
+    }
+    var d = DETAIL[id] || MODULES.filter(function (m) { return m.id === id; })[0];
+    var html = '<div><div class="meta">' + d.tags.map(function (t, i) { return '<span class="tag' + (t === 'External' ? ' ext' : '') + '">' + esc(t) + '</span>'; }).join('') + '</div></div>';
+    html += '<h2>' + esc(d.title) + '</h2><p>' + d.what + '</p>';
+    html += '<div><h3>How it works</h3>' + listHtml(d.how) + '</div>';
+    if (DETAIL[id]) { var tt = talksTo(id); if (tt.length) html += '<div><h3>Talks to</h3>' + listHtml(tt) + '</div>'; }
+    html += '<div><h3>Open these files</h3>' + listHtml(d.files, 'files') + '</div>';
+    if (d.say) html += '<p class="say">' + d.say + '</p>';
+    panel.innerHTML = html;
+  }
+
+  /* ---------- rendering ---------- */
+  function visible(sprint) { return state.mode !== 'build' || sprint <= state.sprint; }
+
+  function render() {
+    var flow = FLOWS.filter(function (f) { return f.id === state.flow; })[0];
+    var step = flow.steps[state.step];
+    var active = state.mode === 'flows' ? step.e : null;
+    var activeEdge = active ? EDGES[active] : null;
+
+    Object.keys(NODES).forEach(function (id) {
+      var n = NODES[id], g = nodeEls[id];
+      g.classList.toggle('sel', state.sel === id);
+      g.classList.toggle('dim', !visible(n.sprint));
+      g.classList.toggle('hot', !!activeEdge && (activeEdge.from === id || activeEdge.to === id));
+    });
+    Object.keys(EDGES).forEach(function (id) {
+      var e = EDGES[id], o = edgeEls[id];
+      var show = visible(e.sprint) && visible(NODES[e.from].sprint) && visible(NODES[e.to].sprint);
+      o.g.classList.toggle('dim', !show);
+      o.g.classList.toggle('on', active === id);
+      o.g.classList.toggle('faint', state.mode === 'flows' && active !== id);
+      o.path.setAttribute('marker-end', 'url(#' + (active === id ? 'arrowhot' : 'arrow') + ')');
+      if (active === id && step.rev) { o.path.setAttribute('marker-end', 'url(#arrowhot)'); }
+    });
+    MODULES.forEach(function (m) { chipEls[m.id].classList.toggle('sel', state.sel === m.id); });
+
+    // step badge
+    var badge = document.getElementById('badge');
+    while (badge.firstChild) badge.removeChild(badge.firstChild);
+    if (active) {
+      var p = edgeEls[active].path, len = p.getTotalLength(), pt = p.getPointAtLength(len / 2);
+      el('circle', { cx: pt.x, cy: pt.y, r: 11 }, badge);
+      var t = el('text', { x: pt.x, y: pt.y + 4 }, badge); t.textContent = state.step + 1;
+      badge.removeAttribute('hidden');
+    } else { badge.setAttribute('hidden', ''); }
+
+    // controls
+    document.getElementById('ctl-flows').hidden = state.mode !== 'flows';
+    document.getElementById('ctl-build').hidden = state.mode !== 'build';
+    ['explore', 'flows', 'build'].forEach(function (m) { document.getElementById('tab-' + m).setAttribute('aria-selected', String(state.mode === m)); });
+    document.getElementById('chips').hidden = state.mode === 'flows';
+
+    if (state.mode === 'flows') {
+      document.querySelectorAll('#flowpills .pill').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.id === state.flow)); });
+      document.getElementById('steptext').innerHTML = '<b>' + (state.step + 1) + '/' + flow.steps.length + '</b>' + step.t;
+      document.getElementById('fprev').disabled = state.step === 0;
+      document.getElementById('fnext').disabled = state.step === flow.steps.length - 1;
+      document.getElementById('fdots').innerHTML = flow.steps.map(function (s, i) { return '<i class="' + (i <= state.step ? 'd' : '') + '"></i>'; }).join('');
+      document.getElementById('caption').textContent = 'Flow: ' + flow.label + '. The numbered arrow is the current step.';
+    } else if (state.mode === 'build') {
+      var sp = SPRINTS.filter(function (s) { return s.n === state.sprint; })[0], idx = SPRINTS.indexOf(sp);
+      document.querySelectorAll('#buildpills .pill').forEach(function (b) { b.setAttribute('aria-pressed', String(Number(b.dataset.n) === state.sprint)); });
+      document.getElementById('buildtext').innerHTML = '<b>' + sp.label + '</b><strong>' + sp.title + '.</strong> ' + sp.text;
+      document.getElementById('bprev').disabled = idx === 0;
+      document.getElementById('bnext').disabled = idx === SPRINTS.length - 1;
+      document.getElementById('bdots').innerHTML = SPRINTS.map(function (s, i) { return '<i class="' + (i <= idx ? 'd' : '') + '"></i>'; }).join('');
+      document.getElementById('caption').textContent = 'Build order: faded parts did not exist yet at this sprint.';
+    } else {
+      document.getElementById('caption').textContent = 'Solid boxes are our code. Dashed boxes are outside services. Arrows show who calls whom.';
+    }
+    renderPanel();
+  }
+
+  function select(id) { state.sel = state.sel === id ? null : id; render(); }
+
+  /* ---------- controls wiring ---------- */
+  var fp = document.getElementById('flowpills');
+  FLOWS.forEach(function (f) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'pill'; b.dataset.id = f.id; b.textContent = f.label;
+    b.addEventListener('click', function () { state.flow = f.id; state.step = 0; render(); });
+    fp.appendChild(b);
+  });
+  var bp = document.getElementById('buildpills');
+  SPRINTS.forEach(function (s) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'pill'; b.dataset.n = s.n; b.textContent = s.label;
+    b.addEventListener('click', function () { state.sprint = s.n; render(); });
+    bp.appendChild(b);
+  });
+
+  function flowSteps() { return FLOWS.filter(function (f) { return f.id === state.flow; })[0].steps.length; }
+  function next() {
+    if (state.mode === 'flows') { if (state.step < flowSteps() - 1) state.step++; }
+    else if (state.mode === 'build') { var i = SPRINTS.findIndex(function (s) { return s.n === state.sprint; }); if (i < SPRINTS.length - 1) state.sprint = SPRINTS[i + 1].n; }
+    render();
+  }
+  function prev() {
+    if (state.mode === 'flows') { if (state.step > 0) state.step--; }
+    else if (state.mode === 'build') { var i = SPRINTS.findIndex(function (s) { return s.n === state.sprint; }); if (i > 0) state.sprint = SPRINTS[i - 1].n; }
+    render();
+  }
+  document.getElementById('fnext').addEventListener('click', next);
+  document.getElementById('fprev').addEventListener('click', prev);
+  document.getElementById('bnext').addEventListener('click', next);
+  document.getElementById('bprev').addEventListener('click', prev);
+
+  document.querySelectorAll('.tabs button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      state.mode = b.dataset.mode;
+      if (state.mode === 'build') state.sprint = SPRINTS[0].n;
+      if (state.mode === 'flows') state.step = 0;
+      render();
+    });
+  });
+  document.addEventListener('keydown', function (ev) {
+    if (ev.target && /input|textarea|select/i.test(ev.target.tagName)) return;
+    if (ev.key === 'ArrowRight') { next(); }
+    else if (ev.key === 'ArrowLeft') { prev(); }
+    else if (ev.key === 'Escape') { state.sel = null; render(); }
+  });
+
+  render();
+})();
+</script>
+
+</body>
+</html>

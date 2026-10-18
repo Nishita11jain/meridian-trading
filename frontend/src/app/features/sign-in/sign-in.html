@@ -1,0 +1,147 @@
+<!--
+  Split sign-in: the landing page's globe on the left (it spins up while credentials are checked),
+  the form on the right. Palette and type come from `.mer` (landing.css); layout is in sign-in.css.
+  On narrow screens the globe becomes a short banner above the form.
+-->
+<aside class="mer-auth-art" aria-hidden="true">
+  <div class="mer-auth-stage" #stage>
+    <canvas #back data-layer="back"></canvas>
+    <canvas #front data-layer="front"></canvas>
+  </div>
+  <div class="mer-auth-caption">
+    <p class="mer-auth-quote">Every candle.<br><span>Every angle.</span></p>
+    <p class="mer-auth-venues">NYSE · LSE · XETRA · NSE · SGX · HKEX · TSE</p>
+  </div>
+</aside>
+
+<main class="mer-auth-main">
+  <header class="mer-auth-top">
+    <a href="/" class="mer-brand mer-auth-brand" (click)="goHome($event)" aria-label="Meridian home"><i aria-hidden="true"></i>Meridian</a>
+    <div class="mer-auth-tools">
+      <button type="button" class="mer-mode" data-testid="signin-motion-toggle"
+        [attr.aria-label]="motion.reduced() ? 'Play animations' : 'Pause animations'"
+        [attr.title]="motion.reduced() ? 'Play animations' : 'Pause animations'"
+        (click)="motion.toggle()">
+        @if (motion.reduced()) {
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true"><path d="M3.5 1.8v10.4a.5.5 0 0 0 .77.42l8-5.2a.5.5 0 0 0 0-.84l-8-5.2a.5.5 0 0 0-.77.42z"></path></svg>
+        } @else {
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true"><rect x="2.5" y="2" width="3" height="10" rx=".6"></rect><rect x="8.5" y="2" width="3" height="10" rx=".6"></rect></svg>
+        }
+      </button>
+      <button
+        type="button"
+        class="mer-mode"
+        data-testid="theme-toggle"
+        [attr.aria-label]="theme.dark() ? 'Switch to light mode' : 'Switch to dark mode'"
+        (click)="theme.toggle()"
+      >◐</button>
+    </div>
+  </header>
+
+  <div class="mer-auth-panel">
+    <div class="mer-auth-head mer-auth-rise">
+      <p class="mer-auth-eyebrow">Secure session</p>
+      <h1 class="mer-auth-title">Welcome back</h1>
+      <p class="mer-auth-lede">Sign in to open your trading workspace.</p>
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="mer-auth-form" [class.is-busy]="submitting()">
+      @if (errorMessage()) {
+        <div class="mer-auth-alert" data-testid="signin-error" role="alert">
+          {{ errorMessage() }}
+        </div>
+      }
+
+      <div class="mer-field mer-auth-rise">
+        <label for="username" class="mer-label">Username</label>
+        <input
+          class="mer-input"
+          [style.border-color]="form.get('username')?.touched && form.get('username')?.invalid ? 'var(--down)' : null"
+          type="text"
+          id="username"
+          formControlName="username"
+          placeholder="Enter your username"
+          data-testid="signin-username"
+          autocomplete="username"
+          maxlength="64"
+          [attr.aria-invalid]="form.get('username')?.touched && form.get('username')?.invalid"
+          [attr.aria-describedby]="form.get('username')?.touched && form.get('username')?.invalid ? 'username-error' : null"
+        />
+        @if (form.get('username')?.touched && form.get('username')?.invalid) {
+          <div class="mer-field-error" id="username-error">Username is required</div>
+        }
+      </div>
+
+      <div class="mer-field mer-auth-rise">
+        <label for="password" class="mer-label">Password</label>
+        <div class="mer-input-wrap">
+          <input
+            #passwordInput
+            class="mer-input mer-input-pw"
+            [style.border-color]="form.get('password')?.touched && form.get('password')?.invalid ? 'var(--down)' : null"
+            [type]="showPassword() ? 'text' : 'password'"
+            id="password"
+            (keydown)="updateCapsLock($event)"
+            (keyup)="updateCapsLock($event)"
+            (blur)="capsLockOn.set(false)"
+            formControlName="password"
+            placeholder="Enter your password"
+            data-testid="signin-password"
+            autocomplete="current-password"
+            maxlength="128"
+            [attr.aria-invalid]="form.get('password')?.touched && form.get('password')?.invalid"
+            [attr.aria-describedby]="form.get('password')?.touched && form.get('password')?.invalid ? 'password-error' : null"
+          />
+          <button
+            type="button"
+            class="mer-eye"
+            data-testid="signin-toggle-password"
+            [attr.aria-pressed]="showPassword()"
+            [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+            (click)="togglePasswordVisibility()"
+          >
+            @if (!showPassword()) {
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z" stroke-linejoin="round"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            } @else {
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                <path d="M3 3l18 18" stroke-linecap="round"></path>
+                <path d="M10.6 10.7A3 3 0 0013.4 13.5" stroke-linecap="round"></path>
+                <path d="M9.9 5.2A11.2 11.2 0 0112 5c6.5 0 10 7 10 7a17.4 17.4 0 01-4.2 4.8" stroke-linecap="round" stroke-linejoin="round"></path>
+                <path d="M6.2 6.3C3.7 8 2 12 2 12s3.5 7 10 7a10.7 10.7 0 004.1-.8" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            }
+            <span class="mer-sr">{{ showPassword() ? 'Hide password' : 'Show password' }}</span>
+          </button>
+        </div>
+        @if (capsLockOn()) {
+          <span class="mer-caps" role="status" data-testid="signin-caps-lock">Caps Lock is on</span>
+        }
+        @if (form.get('password')?.touched && form.get('password')?.invalid) {
+          <div class="mer-field-error" id="password-error">Password is required</div>
+        }
+      </div>
+
+      <button
+        type="submit"
+        class="mer-btn mer-primary mer-auth-submit mer-auth-rise"
+        data-testid="signin-submit"
+        [disabled]="submitting()"
+      >
+        @if (submitting()) {
+          <span class="mer-spinner" aria-hidden="true"></span>
+          Signing in...
+        } @else {
+          Sign in <span aria-hidden="true">→</span>
+        }
+      </button>
+    </form>
+  </div>
+
+  <footer class="mer-auth-foot">
+    <span>Demo environment</span>
+    <span>Sessions end after 15 minutes without activity</span>
+  </footer>
+</main>

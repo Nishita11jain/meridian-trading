@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.trading.api.extensions.watchlists.MarketDataMapper">
+
+    <resultMap id="MarketPriceResultMap" type="com.trading.api.extensions.watchlists.MarketPriceRow">
+        <id property="symbol" column="symbol" javaType="java.lang.String"/>
+        <result property="lastPrice" column="last_price" javaType="java.math.BigDecimal"/>
+        <result property="bid" column="bid" javaType="java.math.BigDecimal"/>
+        <result property="ask" column="ask" javaType="java.math.BigDecimal"/>
+        <result property="currency" column="currency" javaType="java.lang.String"/>
+        <result property="change" column="change" javaType="java.math.BigDecimal"/>
+        <result property="changePercent" column="change_percent" javaType="java.math.BigDecimal"/>
+        <result property="previousClose" column="previous_close" javaType="java.math.BigDecimal"/>
+        <result property="marketState" column="market_state" javaType="java.lang.String"/>
+        <result property="stale" column="stale" javaType="boolean"/>
+        <result property="quoteAsOf" column="quote_as_of" javaType="java.time.Instant"/>
+    </resultMap>
+
+    <update id="upsertMarketPrice">
+        INSERT INTO market_price
+            (symbol, last_price, bid, ask, currency, change, change_percent, previous_close,
+             market_state, stale, quote_as_of, updated_on)
+        VALUES
+            (#{symbol}, #{lastPrice}, #{bid}, #{ask}, #{currency}, #{change}, #{changePercent},
+             #{previousClose}, #{marketState}, #{stale}, #{quoteAsOf}, NOW())
+        ON CONFLICT (symbol) DO UPDATE SET
+            last_price     = EXCLUDED.last_price,
+            bid            = EXCLUDED.bid,
+            ask            = EXCLUDED.ask,
+            currency       = EXCLUDED.currency,
+            change         = EXCLUDED.change,
+            change_percent = EXCLUDED.change_percent,
+            previous_close = EXCLUDED.previous_close,
+            market_state   = EXCLUDED.market_state,
+            stale          = EXCLUDED.stale,
+            quote_as_of    = EXCLUDED.quote_as_of,
+            updated_on     = NOW()
+    </update>
+
+    <!-- A tick is recorded only when it differs from the symbol's latest one. While a market is closed
+         the poller keeps receiving the same closing quote (same price, same quote time); storing each
+         copy would bury the session's real movement under repeats. Returns 0 for a repeat. -->
+    <insert id="insertPriceHistory">
+        INSERT INTO price_history (symbol, price, bid, ask, quote_as_of)
+        SELECT #{symbol}, CAST(#{price} AS NUMERIC), CAST(#{bid} AS NUMERIC), CAST(#{ask} AS NUMERIC),
+               CAST(#{quoteAsOf} AS TIMESTAMP)
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM (SELECT price, quote_as_of
+                  FROM price_history
+                  WHERE symbol = #{symbol}
+                  ORDER BY quote_as_of DESC, id DESC
+                  LIMIT 1) latest
+            WHERE latest.price = CAST(#{price} AS NUMERIC)
+              AND latest.quote_as_of = CAST(#{quoteAsOf} AS TIMESTAMP)
+        )
+    </insert>
+
+    <select id="findAll" resultMap="MarketPriceResultMap">
+        SELECT symbol, last_price, bid, ask, currency, change, change_percent, previous_close,
+               market_state, stale, quote_as_of
+        FROM market_price
+        ORDER BY symbol
+    </select>
+
+    <select id="findBySymbol" resultMap="MarketPriceResultMap">
+        SELECT symbol, last_price, bid, ask, currency, change, change_percent, previous_close,
+               market_state, stale, quote_as_of
+        FROM market_price
+        WHERE symbol = #{symbol}
+    </select>
+
+    <!-- Tick history for a symbol's sparkline, newest first: the latest distinct price updates, one per
+         (quote time, price), so repeated copies of a closing quote count once. price is aliased to
+         last_price so the same result map is reused. -->
+    <select id="findRecentHistory" resultMap="MarketPriceResultMap">
+        SELECT symbol, last_price, bid, ask, quote_as_of
+        FROM (
+            SELECT DISTINCT ON (quote_as_of, price)
+                   id, symbol, price AS last_price, bid, ask, quote_as_of
+            FROM price_history
+            WHERE symbol = #{symbol}
+            ORDER BY quote_as_of, price, id DESC
+        ) updates
+        ORDER BY quote_as_of DESC, id DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- Distinct cached updates for a range window, newest first, still one per (quote time, price). -->
+    <select id="findHistorySince" resultMap="MarketPriceResultMap">
+        SELECT symbol, last_price, bid, ask, quote_as_of
+        FROM (
+            SELECT DISTINCT ON (quote_as_of, price)
+                   id, symbol, price AS last_price, bid, ask, quote_as_of
+            FROM price_history
+            WHERE symbol = #{symbol}
+              AND quote_as_of >= #{since}
+            ORDER BY quote_as_of, price, id DESC
+        ) updates
+        ORDER BY quote_as_of DESC, id DESC
+    </select>
+
+</mapper>

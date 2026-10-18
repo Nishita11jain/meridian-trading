@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.trading.api.mapper.OrderMapper">
+
+    <resultMap id="orderHistoryRowMap" type="com.trading.api.mapper.row.OrderHistoryRow">
+    <result column="order_id" property="orderId"/>
+    <result column="account_id" property="accountId"/>
+    <result column="symbol" property="symbol"/>
+    <result column="side" property="side"/>
+    <result column="quantity" property="quantity"/>
+    <result column="price" property="price"/>
+    <result column="executed_price" property="executedPrice"/>
+    <result column="status" property="status"/>
+    <result column="idempotency_key" property="idempotencyKey"/>
+    <result column="created_on" property="createdOn"/>
+    <result column="rejection_reason" property="rejectionReason"/>
+</resultMap>
+
+    <resultMap id="orderExecutionRowMap" type="com.trading.api.mapper.row.OrderExecutionRow">
+        <id column="id" property="id" javaType="java.util.UUID" typeHandler="com.trading.api.mapper.UuidTypeHandler"/>
+        <result column="account_id" property="accountId"/>
+        <result column="symbol" property="symbol"/>
+        <result column="side" property="side"/>
+        <result column="quantity" property="quantity"/>
+        <result column="price" property="limitPrice"/>
+        <result column="status" property="status"/>
+    </resultMap>
+
+    <insert id="insert">
+        INSERT INTO orders (
+            id,
+            account_id,
+            symbol,
+            side,
+            quantity,
+            price,
+            executed_price,
+            status,
+            idempotency_key,
+            created_on
+        )
+        VALUES (
+            #{id},
+            #{accountId},
+            #{symbol},
+            #{side},
+            #{quantity},
+            #{price},
+            #{executedPrice},
+            #{status},
+            #{idempotencyKey},
+            #{createdOn}
+        )
+    </insert>
+
+    <insert id="insertRejected">
+        INSERT INTO orders (
+            id, account_id, symbol, side, quantity, price, status,
+            idempotency_key, created_on, rejection_reason, updated_on
+        )
+        VALUES (
+            #{id, typeHandler=com.trading.api.mapper.UuidTypeHandler},
+            #{accountId}, #{symbol}, #{side}, #{quantity}, #{price}, 'REJECTED',
+            #{idempotencyKey}, #{decidedOn}, #{rejectionReason}, #{decidedOn}
+        )
+    </insert>
+
+    <select id="findHistoryByAccount" resultMap="orderHistoryRowMap">
+        SELECT
+            CONCAT('ORD-', id) AS order_id,
+            account_id,
+            symbol,
+            side,
+            quantity,
+            price,
+            executed_price,
+            status,
+            idempotency_key,
+            created_on,
+            rejection_reason
+        FROM orders
+        WHERE account_id = #{accountId}
+        <if test="status != null">
+            AND status = #{status}
+        </if>
+        <if test="from != null">
+            AND created_on &gt;= #{from}
+        </if>
+        <if test="to != null">
+            AND created_on &lt;= #{to}
+        </if>
+        ORDER BY created_on DESC
+    </select>
+
+    <select id="findExecutionById" resultMap="orderExecutionRowMap">
+        SELECT
+            id,
+            account_id,
+            symbol,
+            side,
+            quantity,
+            price,
+            status
+        FROM orders
+        WHERE id = #{id}
+    </select>
+
+    <resultMap id="staleOrderRowMap" type="com.trading.api.mapper.row.OrderExecutionRow" extends="orderExecutionRowMap">
+        <result column="idempotency_key" property="idempotencyKey"/>
+        <result column="created_on" property="createdOn"/>
+    </resultMap>
+
+    <select id="findStaleNewOrders" resultMap="staleOrderRowMap">
+        SELECT
+            id,
+            account_id,
+            symbol,
+            side,
+            quantity,
+            price,
+            status,
+            idempotency_key,
+            created_on,
+            rejection_reason
+        FROM orders
+        WHERE status = 'NEW'
+          AND created_on &lt; #{cutoff}
+        ORDER BY created_on ASC
+        LIMIT #{limit}
+    </select>
+
+    <select id="findById" resultMap="orderHistoryRowMap">
+        SELECT
+            CONCAT('ORD-', id) AS order_id,
+            account_id,
+            symbol,
+            side,
+            quantity,
+            price,
+            executed_price,
+            status,
+            idempotency_key,
+            created_on,
+            rejection_reason
+        FROM orders
+        WHERE id = #{id}
+    </select>
+
+    <select id="existsByIdempotencyKey" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1
+            FROM orders
+            WHERE idempotency_key = #{idempotencyKey}
+        )
+    </select>
+
+    <update id="cancelIfNew">
+        UPDATE orders
+        SET status = 'CANCELLED',
+            updated_on = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+          AND status = 'NEW'
+    </update>
+
+    <update id="markFilled">
+        UPDATE orders
+        SET status = 'FILLED',
+            executed_price = #{executedPrice},
+            filled_quantity = #{filledQuantity},
+            executed_on = #{executedOn},
+            updated_on = #{executedOn}
+        WHERE id = #{id}
+          AND status = 'NEW'
+    </update>
+
+    <update id="markRejected">
+        UPDATE orders
+        SET status = 'REJECTED',
+            rejection_reason = #{rejectionReason},
+            updated_on = #{updatedOn}
+        WHERE id = #{id}
+          AND status = 'NEW'
+    </update>
+
+    <!-- Queued orders hold their cash or shares until they fill, are rejected, or are cancelled. -->
+    <update id="updateFxRate">
+        UPDATE orders SET fx_rate = #{fxRate} WHERE id = #{id}
+    </update>
+
+    <select id="sumReservedCash" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(quantity * price * COALESCE(fx_rate, 1)), 0)
+        FROM orders
+        WHERE account_id = #{accountId}
+          AND side = 'BUY'
+          AND status = 'NEW'
+    </select>
+
+    <select id="sumReservedSellQuantity" resultType="long">
+        SELECT COALESCE(SUM(quantity), 0)
+        FROM orders
+        WHERE account_id = #{accountId}
+          AND symbol = #{symbol}
+          AND side = 'SELL'
+          AND status = 'NEW'
+    </select>
+
+</mapper>

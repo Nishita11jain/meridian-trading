@@ -1,0 +1,163 @@
+/* ============================================================
+   Meridian sign-in.
+
+   The host carries `.mer` (palette and type from landing.css)
+   and `.mer-auth` (this file). Global for the same reason as
+   landing.css: the per-component style budget. Every selector
+   is under `.mer-auth`, apart from the shared view-transition
+   names at the end.
+   ============================================================ */
+
+/* `.mer.mer-auth`, not `.mer-auth`: landing.css sets `.mer { display: block }`, and equal specificity
+   would let whichever file loads last win. The doubled class makes this layout win in any order. */
+.mer.mer-auth {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+}
+
+/* ---------------------------------------------------------------- globe panel */
+
+.mer-auth-art {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  border-right: 1px solid var(--mer-line);
+  background: radial-gradient(60% 50% at 50% 45%, var(--mer-glow), transparent 70%);
+}
+.mer-auth-stage { position: absolute; inset: 0; touch-action: pan-y; cursor: grab; }
+.mer-auth-stage:active { cursor: grabbing; }
+.mer-auth-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.mer-auth-stage canvas[data-layer="front"] { pointer-events: none; }
+
+.mer-auth-caption {
+  position: absolute; z-index: 2; left: var(--mer-g); right: var(--mer-g); bottom: 32px;
+  display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px;
+  pointer-events: none;
+}
+.mer-auth-quote {
+  margin: 0; color: var(--mer-dim);
+  font-family: var(--mer-display); font-stretch: 70%; font-weight: 800; text-transform: uppercase;
+  font-size: clamp(28px, 3vw, 44px); line-height: .86; letter-spacing: -.01em;
+}
+.mer-auth-quote span { color: var(--mer-soft); }
+.mer-auth-venues { margin: 0; font: 11px var(--mer-mono); letter-spacing: .04em; color: var(--mer-muted); }
+
+/* ---------------------------------------------------------------- form column */
+
+.mer-auth-main { display: flex; flex-direction: column; min-height: 100vh; padding-inline: var(--mer-g); }
+.mer-auth-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 18px; }
+.mer-auth-tools { display: flex; align-items: center; gap: 10px; }
+.mer-auth-panel { flex: 1; display: flex; flex-direction: column; justify-content: center; width: 100%; max-width: 400px; margin-inline: auto; padding-block: 32px; }
+
+.mer-auth-eyebrow { margin: 0; font: 11px var(--mer-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--mer-warm); }
+.mer-auth-title {
+  margin: 12px 0 10px;
+  font-family: var(--mer-display); font-stretch: 78%; font-weight: 800; text-transform: uppercase;
+  font-size: clamp(38px, 4vw, 52px); line-height: .9; letter-spacing: -.01em; color: var(--mer-fg);
+}
+.mer-auth-lede { margin: 0; font-size: 15px; color: var(--mer-muted); }
+
+.mer-auth-form { display: grid; gap: 18px; margin-top: 30px; }
+.mer-label { display: block; margin-bottom: 8px; font: 600 12px var(--mer-body); letter-spacing: .06em; text-transform: uppercase; color: var(--mer-muted); }
+.mer-input {
+  width: 100%; height: 48px; padding: 0 14px; border-radius: 2px;
+  font: 500 15px var(--mer-body); color: var(--mer-fg);
+  background: color-mix(in srgb, var(--mer-fg) 3%, transparent);
+  border: 1px solid var(--mer-line); outline: none;
+  transition: border-color .2s ease, box-shadow .2s ease, background-color .2s ease, opacity .2s ease;
+}
+.mer-input::placeholder { color: var(--mer-muted); opacity: .7; }
+.mer-input:hover { border-color: var(--mer-stroke); }
+.mer-input:focus { border-color: var(--mer-accent); background: transparent; box-shadow: 0 0 0 4px color-mix(in srgb, var(--mer-accent) 18%, transparent); }
+.mer-auth .mer-input:focus-visible { outline: none; }
+.mer-input-wrap { position: relative; }
+.mer-input-pw { padding-right: 50px; }
+.mer-eye {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 2px;
+  background: transparent; color: var(--mer-muted); cursor: pointer; transition: color .2s ease;
+}
+.mer-eye:hover { color: var(--mer-accent); }
+.mer-field-error, .mer-caps { display: block; margin-top: 6px; font: 600 12px var(--mer-body); }
+.mer-field-error { color: var(--down); }
+.mer-caps { color: var(--warn); }
+
+.mer-auth-alert {
+  padding: 12px 14px; border-left: 2px solid var(--down);
+  background: var(--down-bg); color: var(--down); font: 600 14px var(--mer-body);
+  animation: mer-alert-in .35s ease both;
+}
+
+.mer-auth-submit { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; height: 50px; margin-top: 6px; }
+.mer-auth-submit span[aria-hidden="true"] { transition: transform .2s ease; }
+.mer-auth-submit:hover span[aria-hidden="true"] { transform: translateX(3px); }
+.mer-auth-submit:disabled { cursor: progress; opacity: .85; }
+.mer-auth-form.is-busy .mer-input { opacity: .65; }
+.mer-spinner { width: 16px; height: 16px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: mer-spin .7s linear infinite; }
+
+.mer-auth-foot {
+  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px;
+  padding-block: 18px; border-top: 1px solid var(--mer-line);
+  font: 11px var(--mer-mono); color: var(--mer-muted);
+}
+
+/* Entry: the form settles in just after the globe starts turning. */
+.mer-auth-rise { animation: mer-rise .8s cubic-bezier(.2, .7, .2, 1) .3s both; }
+.mer-auth-form > .mer-auth-rise:nth-child(1) { animation-delay: .4s; }
+.mer-auth-form > .mer-auth-rise:nth-child(2) { animation-delay: .48s; }
+.mer-auth-form > .mer-auth-rise:nth-child(3) { animation-delay: .56s; }
+.mer-auth-form > .mer-auth-rise:nth-child(4) { animation-delay: .64s; }
+
+@keyframes mer-rise { from { opacity: .001; transform: translateY(10px); } }
+@keyframes mer-alert-in { from { opacity: .001; transform: translateY(-4px); } }
+@keyframes mer-spin { to { transform: rotate(360deg); } }
+
+/* ---------------------------------------------------------------- narrow screens */
+
+/* The globe becomes a banner between the header and the form. `display: contents` lets the
+   header, form and footer join the page grid so they can be ordered around it. */
+@media (max-width: 860px) {
+  /* `.mer.mer-auth` to match the base rule above; a plain `.mer-auth` would lose to it. */
+  .mer.mer-auth { grid-template-columns: minmax(0, 1fr); align-content: start; }
+  .mer-auth-main { display: contents; }
+  .mer-auth-top { order: 0; padding-inline: var(--mer-g); }
+  .mer-auth-art { order: 1; height: 220px; min-height: 0; border-right: 0; border-block: 1px solid var(--mer-line); }
+  .mer-auth-caption { display: none; }
+  .mer-auth-panel { order: 2; max-width: 440px; padding: 28px var(--mer-g) 36px; }
+  .mer-auth-foot { order: 3; margin-inline: var(--mer-g); }
+}
+
+/* ---------------------------------------------------------------- page transitions */
+
+/* Shared names let the browser glide the logo and the globe from the landing page into the
+   sign-in panel (and back) during the router's view transition. Each name is used once per page. */
+.mer .mer-brand { view-transition-name: mer-brand; }
+.mer-stage canvas[data-layer="back"],
+.mer-auth-stage canvas[data-layer="back"] { view-transition-name: mer-globe; }
+
+/* A slow ease-in-out (gentle start, gentle stop) so the globe drifts across instead of snapping. */
+::view-transition-group(mer-globe),
+::view-transition-group(mer-brand) {
+  animation-duration: 1.2s;
+  animation-timing-function: cubic-bezier(.65, 0, .35, 1);
+}
+
+/* The globe is captured at the old page's shape and the new page's shape (a wide strip on the landing
+   page, a tall panel on sign-in). Cover keeps it centred and the right way round while the group
+   resizes, instead of stretching it. */
+::view-transition-old(mer-globe),
+::view-transition-new(mer-globe) {
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+/* The rest of the page dissolves over the same stretch, only for this hand-off. Other navigations
+   keep the quick fade from styles.css. */
+:root:active-view-transition-type(meridian)::view-transition-old(root),
+:root:active-view-transition-type(meridian)::view-transition-new(root) {
+  animation-duration: 1s;
+  animation-timing-function: ease-in-out;
+}
+
+.reduce-motion :is(.mer-auth-rise, .mer-auth-alert, .mer-input, .mer-eye, .mer-auth-submit span) { animation: none; transition: none; }

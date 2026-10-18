@@ -1,0 +1,1 @@
+"""Trading analytics ingestion package."""

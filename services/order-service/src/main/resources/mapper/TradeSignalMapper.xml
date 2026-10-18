@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.trading.api.extensions.advice.TradeSignalMapper">
+
+    <resultMap id="TradeSignalResultMap" type="com.trading.api.extensions.advice.TradeSignalRow">
+        <id property="symbol" column="symbol" javaType="java.lang.String"/>
+        <result property="direction" column="direction" javaType="java.lang.String"/>
+        <result property="strength" column="strength" javaType="java.math.BigDecimal"/>
+        <result property="rationale" column="rationale" javaType="java.lang.String"/>
+        <result property="computedAt" column="computed_at" javaType="java.time.Instant"/>
+        <result property="expiresAt" column="expires_at" javaType="java.time.Instant"/>
+    </resultMap>
+
+    <select id="findBySymbol" resultMap="TradeSignalResultMap">
+        SELECT symbol, direction, strength, rationale, computed_at, expires_at
+        FROM trade_signal
+        WHERE symbol = #{symbol}
+    </select>
+
+    <select id="findBySymbols" resultMap="TradeSignalResultMap">
+        SELECT symbol, direction, strength, rationale, computed_at, expires_at
+        FROM trade_signal
+        WHERE symbol IN
+        <foreach item="symbol" collection="symbols" open="(" separator="," close=")">
+            #{symbol}
+        </foreach>
+    </select>
+
+    <update id="upsert">
+        INSERT INTO trade_signal (symbol, direction, strength, rationale, computed_at, expires_at)
+        VALUES (#{symbol}, #{direction}, #{strength}, #{rationale}, #{computedAt}, #{expiresAt})
+        ON CONFLICT (symbol) DO UPDATE SET
+            direction   = EXCLUDED.direction,
+            strength    = EXCLUDED.strength,
+            rationale   = EXCLUDED.rationale,
+            computed_at = EXCLUDED.computed_at,
+            expires_at  = EXCLUDED.expires_at
+    </update>
+
+</mapper>

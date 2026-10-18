@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.trading.api.extensions.portfolio.PortfolioMapper">
+
+    <resultMap id="PricedPositionResultMap" type="com.trading.api.extensions.portfolio.PricedPositionRow">
+        <result property="accountId" column="account_id" javaType="java.lang.Long"/>
+        <result property="symbol" column="symbol" javaType="java.lang.String"/>
+        <result property="quantity" column="quantity" javaType="int"/>
+        <result property="averageCost" column="average_cost" javaType="java.math.BigDecimal"/>
+        <result property="currency" column="currency" javaType="java.lang.String"/>
+        <result property="lastPrice" column="last_price" javaType="java.math.BigDecimal"/>
+        <result property="quoteAsOf" column="quote_as_of" javaType="java.time.Instant"/>
+        <result property="stale" column="stale" javaType="java.lang.Boolean"/>
+    </resultMap>
+
+    <!-- Currency comes from the instrument (always known); the price is left-joined from the market-data
+         read model, so last_price/quote_as_of/stale are null for a symbol that has not been priced. -->
+    <select id="findPricedPositions" resultMap="PricedPositionResultMap">
+        SELECT p.account_id, p.symbol, p.quantity, p.average_cost, i.currency,
+               mq.last_price, mq.quote_as_of, mq.stale
+        FROM positions p
+        JOIN instruments i ON i.symbol = p.symbol
+        LEFT JOIN market_price mq ON mq.symbol = p.symbol
+        WHERE p.account_id = #{accountId} AND p.quantity > 0
+        ORDER BY p.symbol
+    </select>
+
+    <resultMap id="FilledOrderResultMap" type="com.trading.api.extensions.portfolio.FilledOrderRow">
+        <result property="symbol" column="symbol" javaType="java.lang.String"/>
+        <result property="side" column="side" javaType="java.lang.String"/>
+        <result property="quantity" column="quantity" javaType="int"/>
+        <result property="executedPrice" column="executed_price" javaType="java.math.BigDecimal"/>
+        <result property="executedOn" column="executed_at" javaType="java.time.Instant"/>
+    </resultMap>
+
+    <!-- Execution order, so the weighted-average walk books realised P&L at each sell against the
+         average cost at that moment. executed_price is the fill price the executor recorded. -->
+    <select id="findFilledOrders" resultMap="FilledOrderResultMap">
+        SELECT symbol, side, quantity, executed_price, COALESCE(executed_on, updated_on, created_on) AS executed_at
+        FROM orders
+        WHERE account_id = #{accountId} AND status = 'FILLED' AND executed_price IS NOT NULL
+        ORDER BY COALESCE(executed_on, updated_on, created_on), id
+    </select>
+
+    <!-- For the history curve: fills with their time (executed_on, falling back to when the row last
+         changed) and currency, in the order they happened. -->
+    <select id="findFillsForHistory" resultType="com.trading.api.extensions.portfolio.HistoryFillRow">
+        SELECT o.symbol, o.side, COALESCE(o.filled_quantity, o.quantity) AS quantity, o.executed_price AS executedPrice,
+               COALESCE(o.executed_on, o.updated_on, o.created_on) AS executedOn, i.currency
+        FROM orders o
+        JOIN instruments i ON i.symbol = o.symbol
+        WHERE o.account_id = #{accountId} AND o.status = 'FILLED' AND o.executed_price IS NOT NULL
+        ORDER BY COALESCE(o.executed_on, o.updated_on, o.created_on), o.id
+    </select>
+
+    <select id="findPriceTicks" resultType="com.trading.api.extensions.portfolio.PriceTickRow">
+        SELECT symbol, price, recorded_on AS recordedOn
+        FROM price_history
+        WHERE recorded_on &gt; #{from} AND recorded_on &lt;= #{to}
+          AND symbol IN <foreach collection="symbols" item="s" open="(" separator="," close=")">#{s}</foreach>
+        ORDER BY recorded_on, id
+    </select>
+
+    <select id="findLastPricesBefore" resultType="com.trading.api.extensions.portfolio.PriceTickRow">
+        SELECT DISTINCT ON (symbol) symbol, price, recorded_on AS recordedOn
+        FROM price_history
+        WHERE recorded_on &lt;= #{before}
+          AND symbol IN <foreach collection="symbols" item="s" open="(" separator="," close=")">#{s}</foreach>
+        ORDER BY symbol, recorded_on DESC, id DESC
+    </select>
+
+</mapper>

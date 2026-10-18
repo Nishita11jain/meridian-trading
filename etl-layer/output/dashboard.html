@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Trading Analytics Claims</title>
+</head>
+<body>
+  <h1>Trading Analytics Claims</h1>
+  <p>Source: DuckDB analytics from the seed ETL.</p>
+
+  <h2>Claim 1: Reliance leads executed trading value</h2>
+  <p>RELIANCE.NS generated 1,607,000 in executed trading value, about twice INFY.NS.</p>
+  <img src="claim1_trading_value.png" alt="Trading value by instrument" width="600">
+
+  <h2>Claim 2: FILLED is the largest order outcome</h2>
+  <p>21 of 39 orders were FILLED (53.85%). There were 9 REJECTED, 6 CANCELLED, and 3 NEW orders.</p>
+  <img src="claim2_order_execution.png" alt="Number of orders by execution status" width="600">
+
+  <h2>Claim 3: Trading activity peaks at 09:00 and 10:00</h2>
+  <p>Each peak hour had 6 filled orders from 3 accounts. This window may need additional capacity.</p>
+  <img src="claim3_trading_time.png" alt="Filled trading activity by hour" width="600">
+
+</body>
+</html>

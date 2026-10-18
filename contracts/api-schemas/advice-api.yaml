@@ -1,0 +1,228 @@
+openapi: 3.0.3
+
+info:
+  title: Trade Advice & Signals API
+  version: 1.0.0
+  description: |
+    Trade Advice & Signals for the Enterprise Trading Platform (Sprint 10 stretch extension). One
+    module inside the Trade REST API, served on the same origin and port as the other Sprint 10
+    modules, under the same `/api/v1` prefix and the same bearer-token verification.
+
+    This module states a BUY/SELL/HOLD view on an instrument a customer holds or watches, with the
+    reasoning behind it. It informs a decision; it never places one.
+
+    ## Cache-aside, not scheduled
+
+    `GET /signals` only ever reads the cached signal for each eligible symbol -- it never calls
+    Fauxnance. `POST /signals/{symbol}/analyse` is the one action that may call out, and only when
+    the cached signal for that symbol has passed its cooldown; inside the cooldown it returns the
+    cached row with no external call.
+
+    ## Access control
+
+    Every route addresses an account in its path. The account a token may act on is its `accountId`
+    claim and nothing else. A token whose claim does not match the account in the path is refused
+    with `ACC-403`. A symbol outside the account's holdings and watchlists is refused with
+    `ADV-404` -- advice is only ever offered for an instrument the customer has shown interest in.
+
+servers:
+  - url: http://localhost:8081
+    description: Local development (Trade REST API).
+
+tags:
+  - name: Advice
+    description: Read and trigger BUY/SELL/HOLD signals for held or watched instruments.
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/v1/advice/{accountId}/signals:
+    get:
+      tags: [Advice]
+      summary: List the cached signal for every symbol this account holds or watches
+      operationId: getSignals
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+      responses:
+        '200':
+          description: One entry per eligible symbol. A symbol never analysed yet carries a null direction.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SignalResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/advice/{accountId}/signals/{symbol}/analyse:
+    post:
+      tags: [Advice]
+      summary: Analyse one symbol now, serving the cache if still within its cooldown
+      operationId: analyseSignal
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The cached or freshly computed signal.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignalResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: The symbol is neither held nor watched by this account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Fauxnance is unavailable and no prior signal is cached for this symbol.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/advice/health:
+    get:
+      tags: [Advice]
+      summary: Health check
+      operationId: adviceHealth
+      responses:
+        '200':
+          description: UP
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: UP
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    AccountId:
+      name: accountId
+      in: path
+      required: true
+      description: The numeric trading account, which must match the token's accountId claim.
+      schema:
+        type: integer
+        format: int64
+
+  schemas:
+    Direction:
+      type: string
+      enum: [BUY, SELL, HOLD]
+      nullable: true
+      description: Null when the symbol has never been analysed yet.
+
+    SignalResponse:
+      type: object
+      required: [symbol, stale]
+      properties:
+        symbol:
+          type: string
+          example: RELIANCE.NS
+        direction:
+          $ref: '#/components/schemas/Direction'
+        strength:
+          type: number
+          format: double
+          nullable: true
+          description: Normalised distance between the fast and slow moving average, 0 to 1.
+        rationale:
+          type: string
+          nullable: true
+          example: "SMA20 (2876.90) crossed above SMA50 (2810.40) on 2026-10-05."
+        summary:
+          type: string
+          nullable: true
+          description: The plain-English reading of direction, shown alongside rationale's technical sentence.
+          example: "Short-term momentum has turned positive: recent prices are rising faster than the longer-term trend."
+        computedAt:
+          type: string
+          format: date-time
+          nullable: true
+        nextAnalysisAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When Analyse now is allowed to call the market-data provider again for this symbol.
+        stale:
+          type: boolean
+          description: True only when a refresh was attempted and failed and an older signal is being served.
+        chart:
+          type: array
+          nullable: true
+          description: |
+            The candles behind this signal. Only ever populated by the analyse action -- the list
+            read leaves this null, since the card list has no need for the full candle history.
+          items:
+            $ref: '#/components/schemas/ChartPoint'
+        disclaimer:
+          type: string
+          description: Fixed wording on every response -- this reflects past price movement only, not a recommendation.
+
+    ChartPoint:
+      type: object
+      required: [date, close]
+      properties:
+        date:
+          type: string
+          format: date
+        close:
+          type: number
+          format: double
+        sma20:
+          type: number
+          format: double
+          nullable: true
+          description: Null for the earliest days in the window, before 20 preceding closes exist.
+        sma50:
+          type: number
+          format: double
+          nullable: true
+          description: Null for the earliest days in the window, before 50 preceding closes exist.
+
+    ErrorResponse:
+      type: object
+      required: [errorCode, message]
+      properties:
+        errorCode:
+          type: string
+          enum: [AUTH-401, ACC-403, ADV-404, ADV-503]
+        message:
+          type: string
+
+  responses:
+    Unauthorised:
+      description: Missing, malformed, expired or forged token.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: The token does not own the account in the path.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'

@@ -1,0 +1,355 @@
+openapi: 3.0.3
+
+info:
+  title: Automated Strategy Execution API
+  version: 1.0.0
+  description: |
+    Automated Strategy Execution for the Enterprise Trading Platform (Sprint 10 stretch extension,
+    second of two). One module inside the Trade REST API, served on the same origin and port as the
+    other Sprint 10 modules, under the same `/api/v1` prefix and the same bearer-token verification.
+
+    A strategy is single-sided (BUY or SELL, never both) and runs unattended: `StrategyMarketDataConsumer`
+    evaluates every ACTIVE strategy on every market-data quote for its symbol, and
+    `StrategyExecutionService` places a real order through this same service's own
+    `POST /api/v1/orders` when the condition fires, bounded by the strategy's own required risk
+    limits (max spend, max position size, a consecutive-failure circuit breaker). None of that
+    evaluation happens on these routes -- these are CRUD only: create, list, enable/disable, and
+    read the execution log.
+
+    ## Access control
+
+    Every route addresses an account in its path. The account a token may act on is its `accountId`
+    claim and nothing else. A token whose claim does not match the account in the path is refused
+    with `ACC-403`.
+
+servers:
+  - url: http://localhost:8081
+    description: Local development (Trade REST API).
+
+tags:
+  - name: Strategies
+    description: Create, list, enable/disable automated strategies and read their execution log.
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/v1/strategies/{accountId}:
+    get:
+      tags: [Strategies]
+      summary: List this account's strategies
+      operationId: listStrategies
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+      responses:
+        '200':
+          description: The account's strategies, newest first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StrategyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Strategies]
+      summary: Create a strategy
+      operationId: createStrategy
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StrategyRequest'
+      responses:
+        '200':
+          description: The created strategy.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StrategyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          description: The account already holds the maximum number of strategies.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/strategies/{accountId}/{strategyId}/status:
+    put:
+      tags: [Strategies]
+      summary: Enable or disable a strategy. Takes effect on its very next evaluation.
+      operationId: updateStrategyStatus
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+        - $ref: '#/components/parameters/StrategyId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateStrategyStatusRequest'
+      responses:
+        '200':
+          description: The updated strategy.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StrategyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: No strategy with that id for this account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/strategies/{accountId}/{strategyId}/log:
+    get:
+      tags: [Strategies]
+      summary: This strategy's execution history, newest first
+      operationId: getStrategyLog
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+        - $ref: '#/components/parameters/StrategyId'
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Up to limit entries.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StrategyExecutionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: No strategy with that id for this account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/strategies/health:
+    get:
+      tags: [Strategies]
+      summary: Health check
+      operationId: strategiesHealth
+      responses:
+        '200':
+          description: UP
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: UP
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    AccountId:
+      name: accountId
+      in: path
+      required: true
+      description: The numeric trading account, which must match the token's accountId claim.
+      schema:
+        type: integer
+        format: int64
+    StrategyId:
+      name: strategyId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+
+  schemas:
+    Side:
+      type: string
+      enum: [BUY, SELL]
+      description: A strategy is single-sided. For both directions on one instrument, create two strategies.
+
+    StrategyType:
+      type: string
+      enum: [CROSSOVER, BOLLINGER]
+
+    Status:
+      type: string
+      enum: [ACTIVE, DISABLED]
+
+    StrategyRequest:
+      type: object
+      required: [symbol, side, strategyType, orderQuantity, maxSpend, maxPositionSize, maxConsecutiveFailures]
+      properties:
+        symbol:
+          type: string
+          example: NVDA
+        side:
+          $ref: '#/components/schemas/Side'
+        strategyType:
+          $ref: '#/components/schemas/StrategyType'
+        fastWindow:
+          type: integer
+          nullable: true
+          description: Required for CROSSOVER; the number of recent quotes in the fast average.
+          example: 6
+        slowWindow:
+          type: integer
+          nullable: true
+          description: Required for CROSSOVER; the number of recent quotes in the slow average. Must exceed fastWindow.
+          example: 12
+        bandPeriod:
+          type: integer
+          nullable: true
+          description: Required for BOLLINGER; the number of recent quotes the band is computed over.
+          example: 20
+        bandMultiplier:
+          type: number
+          nullable: true
+          description: Required for BOLLINGER; how many standard deviations wide the band is.
+          example: 2
+        orderQuantity:
+          type: integer
+          description: Shares/units placed each time the condition fires.
+        maxSpend:
+          type: number
+          description: A trigger that would spend more than this is skipped, not attempted.
+        maxPositionSize:
+          type: integer
+          description: A BUY that would push the held quantity above this is skipped, not attempted.
+        maxConsecutiveFailures:
+          type: integer
+          description: The strategy auto-disables after this many consecutive order-placement failures.
+
+    StrategyResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        symbol:
+          type: string
+        side:
+          $ref: '#/components/schemas/Side'
+        strategyType:
+          $ref: '#/components/schemas/StrategyType'
+        fastWindow:
+          type: integer
+          nullable: true
+        slowWindow:
+          type: integer
+          nullable: true
+        bandPeriod:
+          type: integer
+          nullable: true
+        bandMultiplier:
+          type: number
+          nullable: true
+        orderQuantity:
+          type: integer
+        maxSpend:
+          type: number
+        maxPositionSize:
+          type: integer
+        maxConsecutiveFailures:
+          type: integer
+        consecutiveFailures:
+          type: integer
+        status:
+          $ref: '#/components/schemas/Status'
+        disabledReason:
+          type: string
+          nullable: true
+        createdOn:
+          type: string
+          format: date-time
+
+    UpdateStrategyStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: '#/components/schemas/Status'
+
+    StrategyExecutionResponse:
+      type: object
+      properties:
+        triggeredAt:
+          type: string
+          format: date-time
+        triggeringPrice:
+          type: number
+        action:
+          type: string
+          example: "BUY 20"
+        outcome:
+          type: string
+          enum: [PLACED, REJECTED, SKIPPED]
+        detail:
+          type: string
+          nullable: true
+        orderId:
+          type: string
+          format: uuid
+          nullable: true
+
+    ErrorResponse:
+      type: object
+      required: [errorCode, message]
+      properties:
+        errorCode:
+          type: string
+          enum: [AUTH-401, ACC-403, VAL-422, LIMIT-429, STRAT-404]
+        message:
+          type: string
+
+  responses:
+    Unauthorised:
+      description: Missing, malformed, expired or forged token.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: The token does not own the account in the path.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ValidationError:
+      description: A value is well-formed but not acceptable.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'

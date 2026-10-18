@@ -1,0 +1,52 @@
+# Angular static site on nginx. API endpoints are baked into the production image.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: frontend }
+  template:
+    metadata:
+      labels: { app: frontend }
+    spec:
+      containers:
+        - name: frontend
+          image: etp-frontend
+          # "latest" is mutable and gets rebuilt/repushed under the same tag; without this,
+          # kubelet reuses whatever it already has cached locally under that tag and a
+          # rollout restart silently keeps running the old image.
+          imagePullPolicy: Always
+          ports:
+            - { name: http, containerPort: 80 }
+          envFrom:
+            - configMapRef: { name: etp-urls }
+          env:
+            # FQDNs, not short names: nginx's "resolver" directive queries the literal
+            # name given with no /etc/resolv.conf search-domain expansion, and CoreDNS
+            # only answers the fully-qualified Service name (unlike wget/getaddrinfo,
+            # which append the search list and succeed on a bare "order-service").
+            - { name: FRONTEND_PROXY_KEEP_PATHS, value: "api" }
+            - { name: FRONTEND_PROXY_KEEP_TARGET, value: "http://order-service.default.svc.cluster.local:8081" }
+            - { name: FRONTEND_PROXY_KEEP2_PATHS, value: "auth" }
+            - { name: FRONTEND_PROXY_KEEP2_TARGET, value: "http://auth-service.default.svc.cluster.local:3000" }
+          readinessProbe:
+            httpGet: { path: /, port: http }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /, port: http }
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+spec:
+  type: ClusterIP
+  selector: { app: frontend }
+  ports:
+    - { name: http, port: 80, targetPort: http }

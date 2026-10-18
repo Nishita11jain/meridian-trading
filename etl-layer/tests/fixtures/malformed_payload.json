@@ -1,0 +1,14 @@
+{
+  "data": {
+    "symbol": "TEST.NS",
+    "candles": [
+      {"date": "2026-08-20", "open": 100, "high": 103, "low": 99, "close": 102, "volume": 1000},
+      {"date": "2026-08-21", "open": 102, "high": 104, "low": 101, "close": 103},
+      {"date": "not-a-date", "open": 103, "high": 105, "low": 102, "close": 104, "volume": 900},
+      {"date": "2026-08-23", "open": 104, "high": 106, "low": 103, "close": "not-a-number", "volume": 800},
+      {"date": "2026-08-24", "open": 105, "high": 102, "low": 103, "close": 101, "volume": 700},
+      {"date": "2026-08-25", "open": 101, "high": 103, "low": 100, "close": 102, "volume": -5},
+      {"date": "2026-08-26", "open": 102, "high": 104, "low": 101, "close": 103, "volume": null}
+    ]
+  }
+}

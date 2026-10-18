@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.trading.api.extensions.watchlists.WatchlistsMapper">
+
+    <resultMap id="WatchlistResultMap" type="com.trading.api.extensions.watchlists.WatchlistRow">
+        <id property="id" column="id" javaType="java.lang.Long"/>
+        <result property="accountId" column="account_id" javaType="java.lang.Long"/>
+        <result property="name" column="name" javaType="java.lang.String"/>
+        <result property="createdOn" column="created_on" javaType="java.time.Instant"/>
+    </resultMap>
+
+    <insert id="insertWatchlist" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO watchlists (account_id, name)
+        VALUES (#{accountId}, #{name})
+    </insert>
+
+    <select id="findByAccount" resultMap="WatchlistResultMap">
+        SELECT id, account_id, name, created_on
+        FROM watchlists
+        WHERE account_id = #{accountId}
+        ORDER BY created_on, id
+    </select>
+
+    <select id="findById" resultMap="WatchlistResultMap">
+        SELECT id, account_id, name, created_on
+        FROM watchlists
+        WHERE id = #{id}
+    </select>
+
+    <select id="findItemSymbols" resultType="java.lang.String">
+        SELECT symbol FROM watchlist_items WHERE watchlist_id = #{watchlistId}
+        ORDER BY position NULLS LAST, added_on, symbol
+    </select>
+
+    <select id="findItems" resultType="com.trading.api.extensions.watchlists.WatchlistItemRow">
+        SELECT symbol, flag FROM watchlist_items WHERE watchlist_id = #{watchlistId}
+        ORDER BY position NULLS LAST, added_on, symbol
+    </select>
+
+    <update id="setItemFlag">
+        UPDATE watchlist_items SET flag = #{flag} WHERE watchlist_id = #{watchlistId} AND symbol = #{symbol}
+    </update>
+
+    <insert id="addItem">
+        INSERT INTO watchlist_items (watchlist_id, symbol, position)
+        VALUES (#{watchlistId}, #{symbol},
+                (SELECT COALESCE(max(position) + 1, count(*)) FROM watchlist_items WHERE watchlist_id = #{watchlistId}))
+    </insert>
+
+    <delete id="removeItem">
+        DELETE FROM watchlist_items WHERE watchlist_id = #{watchlistId} AND symbol = #{symbol}
+    </delete>
+
+    <select id="itemExists" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM watchlist_items WHERE watchlist_id = #{watchlistId} AND symbol = #{symbol})
+    </select>
+
+    <update id="renameWatchlist">
+        UPDATE watchlists SET name = #{name} WHERE id = #{id}
+    </update>
+
+    <delete id="deleteItems">
+        DELETE FROM watchlist_items WHERE watchlist_id = #{watchlistId}
+    </delete>
+
+    <delete id="deleteWatchlist">
+        DELETE FROM watchlists WHERE id = #{id}
+    </delete>
+
+    <update id="setItemPosition">
+        UPDATE watchlist_items SET position = #{position} WHERE watchlist_id = #{watchlistId} AND symbol = #{symbol}
+    </update>
+
+    <select id="nameExistsForAccount" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM watchlists WHERE account_id = #{accountId} AND name = #{name})
+    </select>
+
+</mapper>

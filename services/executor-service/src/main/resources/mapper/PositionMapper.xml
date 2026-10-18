@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.trading.api.mapper.PositionMapper">
+
+    <resultMap id="PositionResultMap" type="com.trading.api.mapper.row.PositionRow">
+        <id property="accountId" column="account_id" javaType="java.lang.Long"/>
+        <result property="symbol" column="symbol" javaType="java.lang.String"/>
+        <result property="quantity" column="quantity" javaType="java.lang.Integer"/>
+                <result property="version" column="version" javaType="java.lang.Integer"/>
+        <result property="averageCost" column="average_cost" javaType="com.trading.domain.Money"
+                typeHandler="com.trading.api.mapper.MoneyTypeHandler"/>
+    </resultMap>
+
+    <select id="findByAccountAndSymbol" resultMap="PositionResultMap">
+                SELECT account_id, symbol, quantity, average_cost, version
+        FROM positions
+        WHERE account_id = #{accountId}
+          AND symbol = #{symbol}
+    </select>
+
+    <select id="findAllHeldByAccount" resultMap="PositionResultMap">
+                SELECT account_id, symbol, quantity, average_cost, version
+        FROM positions
+        WHERE account_id = #{accountId}
+          AND quantity > 0
+        ORDER BY symbol
+    </select>
+
+    <update id="update">
+        UPDATE positions
+                SET quantity = #{quantity}, average_cost = #{averageCost}, version = version + 1
+        WHERE account_id = #{accountId}
+          AND symbol = #{symbol}
+                    AND version = #{expectedVersion}
+    </update>
+
+    <insert id="insert">
+                INSERT INTO positions (account_id, symbol, quantity, average_cost, version)
+                VALUES (#{accountId}, #{symbol}, #{quantity}, #{averageCost}, 0)
+    </insert>
+
+</mapper>

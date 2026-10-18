@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.trading.api.extensions.notifications.NotificationsMapper">
+
+    <resultMap id="NotificationResultMap" type="com.trading.api.extensions.notifications.NotificationRow">
+        <id property="id" column="id" javaType="java.util.UUID" typeHandler="com.trading.api.mapper.UuidTypeHandler"/>
+        <result property="accountId" column="account_id" javaType="java.lang.Long"/>
+        <result property="type" column="type" javaType="java.lang.String"/>
+        <result property="channel" column="channel" javaType="java.lang.String"/>
+        <result property="subject" column="subject" javaType="java.lang.String"/>
+        <result property="message" column="message" javaType="java.lang.String"/>
+        <result property="deliveryState" column="delivery_state" javaType="java.lang.String"/>
+        <result property="readOn" column="read_on" javaType="java.time.Instant"/>
+        <result property="createdOn" column="created_on" javaType="java.time.Instant"/>
+        <result property="orderId" column="order_id" javaType="java.util.UUID" typeHandler="com.trading.api.mapper.UuidTypeHandler"/>
+        <result property="alertId" column="alert_id" javaType="java.lang.Long"/>
+        <result property="symbol" column="symbol" javaType="java.lang.String"/>
+    </resultMap>
+
+    <insert id="insertIfNew">
+        INSERT INTO notifications
+            (id, account_id, source_event_id, type, channel, subject, message, delivery_state,
+             order_id, alert_id, symbol)
+        VALUES
+            (#{id,javaType=java.util.UUID,typeHandler=com.trading.api.mapper.UuidTypeHandler},
+             #{accountId},
+             #{sourceEventId,javaType=java.util.UUID,typeHandler=com.trading.api.mapper.UuidTypeHandler},
+             #{type}, #{channel}, #{subject}, #{message}, #{deliveryState},
+             #{orderId,jdbcType=OTHER,javaType=java.util.UUID,typeHandler=com.trading.api.mapper.UuidTypeHandler},
+             #{alertId,jdbcType=BIGINT},
+             #{symbol,jdbcType=VARCHAR})
+        ON CONFLICT (source_event_id) DO NOTHING
+    </insert>
+
+    <select id="findByAccount" resultMap="NotificationResultMap">
+        SELECT id, account_id, type, channel, subject, message, delivery_state, read_on, created_on,
+               order_id, alert_id, symbol
+        FROM notifications
+        WHERE account_id = #{accountId}
+        ORDER BY created_on DESC, id
+    </select>
+
+    <select id="countUnread" resultType="int">
+        SELECT count(*) FROM notifications WHERE account_id = #{accountId} AND read_on IS NULL
+    </select>
+
+    <select id="findOne" resultMap="NotificationResultMap">
+        SELECT id, account_id, type, channel, subject, message, delivery_state, read_on, created_on,
+               order_id, alert_id, symbol
+        FROM notifications
+        WHERE id = #{id,javaType=java.util.UUID,typeHandler=com.trading.api.mapper.UuidTypeHandler} AND account_id = #{accountId}
+    </select>
+
+    <!-- Only an unread notification is stamped, so reopening a read one keeps when it was first read. -->
+    <update id="markRead">
+        UPDATE notifications
+        SET read_on = NOW()
+        WHERE id = #{id,javaType=java.util.UUID,typeHandler=com.trading.api.mapper.UuidTypeHandler} AND account_id = #{accountId} AND read_on IS NULL
+    </update>
+
+    <update id="markUnread">
+        UPDATE notifications
+        SET read_on = NULL
+        WHERE id = #{id,javaType=java.util.UUID,typeHandler=com.trading.api.mapper.UuidTypeHandler} AND account_id = #{accountId}
+    </update>
+
+    <update id="markAllRead">
+        UPDATE notifications
+        SET read_on = NOW()
+        WHERE account_id = #{accountId} AND read_on IS NULL
+    </update>
+
+</mapper>

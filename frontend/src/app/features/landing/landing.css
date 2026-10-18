@@ -1,0 +1,158 @@
+/* ============================================================
+   Meridian landing page.
+
+   Global rather than component-scoped: it is larger than the
+   8 kB per-component style budget in angular.json. Every
+   selector sits under `.mer` (the landing component's host),
+   so nothing here reaches any other page.
+
+   Two hues only, lilac and amber, which complement each other.
+   Candles use them for direction on this page (hollow lilac up,
+   filled amber down) to keep the hero calm; the app's red/green
+   direction colours stay reserved for real market data.
+   ============================================================ */
+
+.mer {
+  --mer-bg: #F4F2FA;
+  --mer-fg: #1A1730;
+  --mer-muted: #625E80;
+  --mer-line: #DEDAEE;
+  --mer-stroke: #C6BFE2;
+  --mer-accent: #5B47C4;
+  --mer-warm: #BF7A3E;
+  --mer-ink: #FFFFFF;
+  --mer-dim: #C9C3E3;
+  --mer-soft: #5B47C4;
+  --mer-up: #5B47C4;
+  --mer-down: #BF7A3E;
+  --mer-glow: #8E74FF1F;
+  --mer-stars: 0;
+  --mer-g: clamp(16px, 4cqi, 44px);
+  --mer-display: var(--font-display);
+  --mer-body: var(--font-body);
+  --mer-mono: var(--font-num);
+
+  display: block;
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  container-type: inline-size;
+  overflow-x: clip;
+  color: var(--mer-fg);
+  font-family: var(--mer-body);
+  background: radial-gradient(50% 60% at 50% 42%, var(--mer-glow), transparent 70%), var(--mer-bg);
+  transition: background-color .4s ease, color .4s ease;
+}
+
+.dark .mer {
+  --mer-bg: #0A0B1D;
+  --mer-fg: #ECE9FA;
+  --mer-muted: #9896BC;
+  --mer-line: #262748;
+  --mer-stroke: #3E3D66;
+  --mer-accent: #A99BE8;
+  --mer-warm: #E6B48A;
+  --mer-ink: #120E2A;
+  --mer-dim: #4A4769;
+  --mer-soft: #CBC2F4;
+  --mer-up: #A99BE8;
+  --mer-down: #E6B48A;
+  --mer-glow: #6D4AE02B;
+  --mer-stars: 1;
+}
+
+.mer a { color: inherit; text-decoration: none; }
+.mer :focus-visible { outline: 2px solid var(--mer-accent); outline-offset: 3px; }
+
+.mer-sr {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* ---------------------------------------------------------------- nav */
+
+.mer-nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px var(--mer-g); position: relative; z-index: 3; }
+.mer-brand { display: flex; align-items: center; gap: 10px; font-family: var(--mer-display); font-weight: 900; font-stretch: 112%; letter-spacing: -.02em; text-transform: uppercase; }
+.mer-brand i { width: 10px; height: 10px; border-radius: 50%; background: var(--mer-warm); box-shadow: 0 0 10px var(--mer-glow); }
+.mer-nav-right { display: flex; align-items: center; gap: 10px; }
+.mer-mode { display: inline-grid; place-items: center; width: 36px; height: 36px; padding: 0; border-radius: 50%; border: 1px solid var(--mer-line); background: transparent; color: var(--mer-fg); cursor: pointer; font-size: 15px; transition: border-color .2s ease, color .2s ease; }
+.mer-mode:hover { border-color: var(--mer-accent); color: var(--mer-accent); }
+.mer-signin { font-weight: 700; font-size: 14px; padding: 9px 16px; background: var(--mer-fg); color: var(--mer-bg) !important; }
+
+.mer-meta {
+  display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  margin-inline: var(--mer-g); padding-block: 10px; border-block: 1px solid var(--mer-line);
+  font: 12px var(--mer-mono); color: var(--mer-muted); position: relative; z-index: 3;
+}
+
+/* ---------------------------------------------------------------- stage */
+
+.mer-stage { position: relative; height: 580px; overflow: hidden; touch-action: pan-y; cursor: grab; user-select: none; }
+.mer-stage:active { cursor: grabbing; }
+.mer-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.mer-stage canvas[data-layer="back"] { z-index: 1; }
+.mer-stage canvas[data-layer="front"] { z-index: 3; pointer-events: none; }
+.mer-hint { position: absolute; z-index: 4; bottom: 10px; left: 50%; transform: translateX(-50%); font: 11px var(--mer-mono); letter-spacing: .06em; color: var(--mer-muted); white-space: nowrap; pointer-events: none; }
+
+/* The headline: an outline, a dim fill, and a bright fill revealed by a band of light that
+   follows the rotation. `--rev`, `--sweep` and `--sweep2` are set every frame by MeridianScene. */
+.mer-word {
+  position: absolute; z-index: 2; pointer-events: none;
+  font-family: var(--mer-display); font-stretch: 70%; font-weight: 800; text-transform: uppercase;
+  font-size: clamp(40px, 7.9cqi, 112px); line-height: .84; letter-spacing: -.02em;
+}
+.mer-l { left: calc(var(--mer-g) + 2cqi); top: 50%; transform: translateY(-62%); }
+.mer-r { right: calc(var(--mer-g) + 2cqi); top: 50%; transform: translateY(-38%); text-align: right; }
+.mer-word .o { display: block; color: transparent; -webkit-text-stroke: 1.2px var(--mer-stroke); }
+.mer-word .b, .mer-word .f { position: absolute; inset: 0; display: block; clip-path: inset(0 0 0 calc((1 - var(--rev, 1)) * 100%)); }
+.mer-r .b, .mer-r .f { clip-path: inset(0 calc((1 - var(--rev, 1)) * 100%) 0 0); }
+.mer-word .b { color: var(--mer-dim); }
+.mer-word .f {
+  color: var(--mer-fg);
+  -webkit-mask-image: linear-gradient(100deg, transparent 0 26%, #000 44% 56%, transparent 74% 100%);
+  mask-image: linear-gradient(100deg, transparent 0 26%, #000 44% 56%, transparent 74% 100%);
+  -webkit-mask-size: 300% 100%; mask-size: 300% 100%;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-position: calc((1 - var(--sweep, 0)) * 100%) 0; mask-position: calc((1 - var(--sweep, 0)) * 100%) 0;
+}
+.mer-r .f { color: var(--mer-soft); -webkit-mask-position: calc((1 - var(--sweep2, 0)) * 100%) 0; mask-position: calc((1 - var(--sweep2, 0)) * 100%) 0; }
+
+/* ---------------------------------------------------------------- call to action */
+
+.mer-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: end; padding: 8px var(--mer-g) 40px; position: relative; z-index: 3; }
+.mer-lede { max-width: 46ch; margin: 0; color: var(--mer-muted); font-size: 16px; line-height: 1.55; }
+.mer-ctas { display: flex; flex-wrap: wrap; }
+.mer-btn { padding: 15px 22px; font: 700 14px var(--mer-body); border: 1px solid var(--mer-fg); background: transparent; color: var(--mer-fg); cursor: pointer; transition: background-color .2s ease, border-color .2s ease, color .2s ease; }
+.mer-btn:hover { background: color-mix(in srgb, var(--mer-fg) 8%, transparent); }
+.mer-primary { background: var(--mer-accent); border-color: var(--mer-accent); color: var(--mer-ink) !important; }
+.mer-primary:hover { background: var(--mer-warm); border-color: var(--mer-warm); }
+
+/* ---------------------------------------------------------------- modules */
+
+.mer-mods { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--mer-line); scroll-margin-top: 16px; }
+.mer-mod { display: grid; grid-template-columns: minmax(0, 210px) minmax(0, 1fr) auto; gap: 18px; align-items: baseline; padding: 20px var(--mer-g); border-bottom: 1px solid var(--mer-line); transition: background-color .25s ease, color .25s ease; }
+.mer-mod:nth-child(odd) { border-right: 1px solid var(--mer-line); }
+.mer-mod:hover { background: var(--mer-accent); color: var(--mer-ink); }
+.mer-mod:hover p, .mer-mod:hover b { color: inherit; }
+.mer-mod h2 { margin: 0; font-family: var(--mer-display); font-stretch: 85%; font-size: 18px; font-weight: 800; letter-spacing: 0; text-transform: uppercase; }
+.mer-mod p { margin: 0; color: var(--mer-muted); font-size: 14px; }
+.mer-mod b { font-weight: 400; color: var(--mer-warm); }
+
+.mer-foot { padding: 22px var(--mer-g) 28px; font: 12px var(--mer-mono); color: var(--mer-muted); }
+
+/* ---------------------------------------------------------------- narrow screens */
+
+@container (max-width: 720px) {
+  .mer-stage { height: 520px; }
+  .mer-word { font-size: 12.5cqi; }
+  .mer-l { top: 18px; transform: none; }
+  .mer-r { top: auto; bottom: 36px; transform: none; }
+  .mer-bar { grid-template-columns: minmax(0, 1fr); }
+  .mer-mods { grid-template-columns: minmax(0, 1fr); }
+  .mer-mod { grid-template-columns: minmax(0, 1fr) auto; }
+  .mer-mod:nth-child(odd) { border-right: 0; }
+  .mer-mod p { grid-column: 1 / -1; grid-row: 2; }
+  .mer-hint { display: none; }
+}
+
+.reduce-motion .mer, .reduce-motion .mer-btn, .reduce-motion .mer-mod { transition: none; }

@@ -1,0 +1,130 @@
+symbol,instrument_name,asset_class,currency,tradable
+ADANIENT.NS,Adani Enterprises Limited,EQUITY,INR,true
+ADANIPORTS.NS,Adani Ports and Special Economic Zone Limited,EQUITY,INR,true
+APOLLOHOSP.NS,Apollo Hospitals Enterprise Limited,EQUITY,INR,true
+ASIANPAINT.NS,Asian Paints Limited,EQUITY,INR,true
+AXISBANK.NS,Axis Bank Limited,EQUITY,INR,true
+BAJAJFINSV.NS,Bajaj Finserv Limited,EQUITY,INR,true
+BAJFINANCE.NS,Bajaj Finance Limited,EQUITY,INR,true
+BEL.NS,Bharat Electronics Limited,EQUITY,INR,true
+BHARTIARTL.NS,Bharti Airtel Limited,EQUITY,INR,true
+BPCL.NS,Bharat Petroleum Corporation Limited,EQUITY,INR,true
+BRITANNIA.NS,Britannia Industries Limited,EQUITY,INR,true
+CIPLA.NS,Cipla Limited,EQUITY,INR,true
+COALINDIA.NS,Coal India Limited,EQUITY,INR,true
+DIVISLAB.NS,Divi's Laboratories Limited,EQUITY,INR,true
+DRREDDY.NS,Dr. Reddy's Laboratories Limited,EQUITY,INR,true
+EICHERMOT.NS,Eicher Motors Limited,EQUITY,INR,true
+GRASIM.NS,Grasim Industries Limited,EQUITY,INR,true
+HCLTECH.NS,HCL Technologies Limited,EQUITY,INR,true
+HDFCBANK.NS,HDFC Bank Limited,EQUITY,INR,true
+HDFCLIFE.NS,HDFC Life Insurance Company Limited,EQUITY,INR,true
+HEROMOTOCO.NS,Hero MotoCorp Limited,EQUITY,INR,true
+HINDALCO.NS,Hindalco Industries Limited,EQUITY,INR,true
+HINDUNILVR.NS,Hindustan Unilever Limited,EQUITY,INR,true
+ICICIBANK.NS,ICICI Bank Limited,EQUITY,INR,true
+INDUSINDBK.NS,IndusInd Bank Limited,EQUITY,INR,true
+INFY.NS,Infosys Limited,EQUITY,INR,true
+IOC.NS,Indian Oil Corporation Limited,EQUITY,INR,true
+ITC.NS,ITC Limited,EQUITY,INR,true
+JSWSTEEL.NS,JSW Steel Limited,EQUITY,INR,true
+KOTAKBANK.NS,Kotak Mahindra Bank Limited,EQUITY,INR,true
+LICI.NS,Life Insurance Corporation of India,EQUITY,INR,true
+LT.NS,Larsen & Toubro Limited,EQUITY,INR,true
+MARUTI.NS,Maruti Suzuki India Limited,EQUITY,INR,true
+NESTLEIND.NS,Nestle India Limited,EQUITY,INR,true
+NTPC.NS,NTPC Limited,EQUITY,INR,true
+OLDTECH.BO,Old Technology Industries Limited,EQUITY,INR,false
+ONGC.NS,Oil and Natural Gas Corporation Limited,EQUITY,INR,true
+POWERGRID.NS,Power Grid Corporation of India Limited,EQUITY,INR,true
+RELIANCE.NS,Reliance Industries Limited,EQUITY,INR,true
+SBILIFE.NS,SBI Life Insurance Company Limited,EQUITY,INR,true
+SBIN.NS,State Bank of India,EQUITY,INR,true
+SHRIRAMFIN.NS,Shriram Finance Limited,EQUITY,INR,true
+SUNPHARMA.NS,Sun Pharmaceutical Industries Limited,EQUITY,INR,true
+TATACONSUM.NS,Tata Consumer Products Limited,EQUITY,INR,true
+TATASTEEL.NS,Tata Steel Limited,EQUITY,INR,true
+TCS.NS,Tata Consultancy Services Limited,EQUITY,INR,true
+TECHM.NS,Tech Mahindra Limited,EQUITY,INR,true
+TITAN.NS,Titan Company Limited,EQUITY,INR,true
+TRENT.NS,Trent Limited,EQUITY,INR,true
+ULTRACEMCO.NS,UltraTech Cement Limited,EQUITY,INR,true
+WIPRO.NS,Wipro Limited,EQUITY,INR,true
+AAPL,Apple Inc.,EQUITY,USD,true
+ABBV,AbbVie,EQUITY,USD,true
+ADBE,Adobe Inc.,EQUITY,USD,true
+AMD,Advanced Micro Devices,EQUITY,USD,true
+AMZN,Amazon,EQUITY,USD,true
+AVGO,Broadcom,EQUITY,USD,true
+BA,Boeing,EQUITY,USD,true
+BAC,Bank of America,EQUITY,USD,true
+CAT,Caterpillar Inc.,EQUITY,USD,true
+COST,Costco,EQUITY,USD,true
+CRM,Salesforce,EQUITY,USD,true
+CSCO,Cisco,EQUITY,USD,true
+CVX,Chevron Corporation,EQUITY,USD,true
+DIS,Walt Disney Company (The),EQUITY,USD,true
+GE,GE Aerospace,EQUITY,USD,true
+GOOGL,Alphabet Inc. (Class A),EQUITY,USD,true
+GS,Goldman Sachs,EQUITY,USD,true
+HD,Home Depot (The),EQUITY,USD,true
+IBM,IBM,EQUITY,USD,true
+INTC,Intel,EQUITY,USD,true
+JNJ,Johnson & Johnson,EQUITY,USD,true
+JPM,JPMorgan Chase,EQUITY,USD,true
+KO,Coca-Cola Company (The),EQUITY,USD,true
+LLY,Lilly (Eli),EQUITY,USD,true
+MA,Mastercard,EQUITY,USD,true
+MCD,McDonald's,EQUITY,USD,true
+META,Meta Platforms,EQUITY,USD,true
+MRK,Merck & Co.,EQUITY,USD,true
+MS,Morgan Stanley,EQUITY,USD,true
+MSFT,Microsoft Corporation,EQUITY,USD,true
+NFLX,Netflix,EQUITY,USD,true
+NKE,"Nike, Inc.",EQUITY,USD,true
+NVDA,Nvidia,EQUITY,USD,true
+ORCL,Oracle Corporation,EQUITY,USD,true
+PEP,PepsiCo,EQUITY,USD,true
+PFE,Pfizer,EQUITY,USD,true
+PG,Procter & Gamble,EQUITY,USD,true
+QCOM,Qualcomm,EQUITY,USD,true
+T,AT&T,EQUITY,USD,true
+TSLA,"Tesla, Inc.",EQUITY,USD,true
+TXN,Texas Instruments,EQUITY,USD,true
+UBER,Uber,EQUITY,USD,true
+UNH,UnitedHealth Group,EQUITY,USD,true
+V,Visa Inc.,EQUITY,USD,true
+VZ,Verizon,EQUITY,USD,true
+WFC,Wells Fargo,EQUITY,USD,true
+WMT,Walmart,EQUITY,USD,true
+XOM,ExxonMobil,EQUITY,USD,true
+QQQ,Invesco QQQ Trust,ETF,USD,true
+SPY,SPDR S&P 500 ETF Trust,ETF,USD,true
+X:AAVE-USD,Aave against United States Dollar,CRYPTO,USD,true
+X:ADA-USD,Cardano against United States Dollar,CRYPTO,USD,true
+X:ATOM-USD,Cosmos against United States Dollar,CRYPTO,USD,true
+X:AVAX-USD,Avalanche against United States Dollar,CRYPTO,USD,true
+X:BCH-USD,Bitcoin Cash against United States Dollar,CRYPTO,USD,true
+X:BNB-USD,BNB against United States Dollar,CRYPTO,USD,true
+X:BTC-USD,Bitcoin against United States Dollar,CRYPTO,USD,true
+X:DOGE-USD,Dogecoin against United States Dollar,CRYPTO,USD,true
+X:DOT-USD,Polkadot against United States Dollar,CRYPTO,USD,true
+X:ETC-USD,Ethereum Classic against United States Dollar,CRYPTO,USD,true
+X:ETH-USD,Ethereum against United States Dollar,CRYPTO,USD,true
+X:FIL-USD,Filecoin against United States Dollar,CRYPTO,USD,true
+X:ICP-USD,Internet Computer against United States Dollar,CRYPTO,USD,true
+X:INJ-USD,Injective against United States Dollar,CRYPTO,USD,true
+X:LINK-USD,Chainlink against United States Dollar,CRYPTO,USD,true
+X:LTC-USD,Litecoin against United States Dollar,CRYPTO,USD,true
+X:NEAR-USD,NEAR Protocol against United States Dollar,CRYPTO,USD,true
+X:OP-USD,Optimism against United States Dollar,CRYPTO,USD,true
+X:SOL-USD,Solana against United States Dollar,CRYPTO,USD,true
+X:THETA-USD,Theta Network against United States Dollar,CRYPTO,USD,true
+X:TRX-USD,TRON against United States Dollar,CRYPTO,USD,true
+X:XLM-USD,Stellar against United States Dollar,CRYPTO,USD,true
+X:XMR-USD,Monero against United States Dollar,CRYPTO,USD,true
+X:XRP-USD,XRP against United States Dollar,CRYPTO,USD,true
+X:XTZ-USD,Tezos against United States Dollar,CRYPTO,USD,true
+FX:GBPUSD,British Pound against United States Dollar,FX,USD,true
+FX:INRUSD,Indian Rupee against US Dollar,FX,USD,false
+FX:USDINR,US Dollar against Indian Rupee,FX,INR,false

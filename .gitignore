@@ -1,0 +1,77 @@
+# Secrets and local configuration
+**/.env
+**/.env.*
+!**/.env.example
+*.local.env
+# Keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+# Personal end-to-end scripts with a real login (use the env-driven specs instead)
+frontend/e2e-manual/my-*.spec.ts
+# Saved browser sign-in state from Playwright (holds tokens)
+**/.auth/
+
+# Java and Maven
+target/
+*.class
+*.jar
+*.war
+.mvn/wrapper/maven-wrapper.jar
+hs_err_pid*
+replay_pid*
+
+# Node, TypeScript and Angular
+node_modules/
+dist/
+build/
+.angular/
+*.tsbuildinfo
+npm-debug.log*
+yarn-error.log*
+.eslintcache
+coverage/
+playwright-report/
+test-results/
+blob-report/
+.playwright/
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+*.egg-info/
+
+# Databases, caches and local data dumps
+*.duckdb
+*.sqlite
+*.sqlite3
+*.db
+# Market data cached from the Fauxnance API (re-fetched on demand; not ours to redistribute)
+/data/cache/
+
+# Local run and test output
+.run-logs/
+.playwright-cli/
+.coverage
+*.log
+**/test_output*.txt
+
+# IDEs and editors
+.idea/
+*.iml
+.vscode/
+*.swp
+*.orig
+*.bak
+
+# Operating system
+.DS_Store
+Thumbs.db

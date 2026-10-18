@@ -1,0 +1,329 @@
+openapi: 3.0.3
+
+info:
+  title: Customer Notifications API
+  version: 1.0.0
+  description: |
+    The customer inbox for the Enterprise Trading Platform (Sprint 10 extension). One module inside the
+    Trade REST API, served on the same origin and port under `/api/v1`, protected by the same bearer
+    token.
+
+    A consumer on the `trade-events` topic (group `notification-service`) turns every order outcome
+    (filled, rejected, cancelled) into one notification, on the channel the customer's preferences
+    resolve to. Delivery is recorded, not sent externally: the notification row carries the resolved
+    channel and a delivery state, and the in-app inbox is the delivery surface. The watchlists module
+    also delivers price alerts through this module, in-process.
+
+    Duplicate delivery is impossible: each event is claimed once in a shared idempotency ledger and the
+    notification row has a unique source event id, so a redelivered Kafka message notifies no one twice.
+
+    ## Access control
+
+    Every route addresses an account in the path. The account a token may read is its `accountId` claim;
+    another account is refused with `ACC-403`. A notification id that does not exist, or belongs to
+    another account, is `NTF-404` either way, so ownership is never disclosed.
+
+    ## One notification
+
+    A notification records what it is about: the order (for an order outcome) or the price alert (for a
+    triggered alert), and the instrument. Opening one returns it with that order or alert, read through
+    the module that owns it. Opening is read-only; the inbox marks an unread notification read with the
+    separate per-notification read route, and can mark it unread again. Notifications recorded before
+    references existed carry none and open with their own text only.
+
+servers:
+  - url: http://localhost:5500
+    description: Local development (Trade REST API).
+
+tags:
+  - name: Notifications
+    description: Read the inbox, open one notification, and mark notifications read or unread.
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/v1/notifications/{accountId}:
+    get:
+      tags: [Notifications]
+      summary: The account's notifications, newest first, with the unread count
+      operationId: getNotifications
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+      responses:
+        '200':
+          description: The inbox and its unread count.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/notifications/{accountId}/read:
+    post:
+      tags: [Notifications]
+      summary: Mark every unread notification read
+      operationId: markNotificationsRead
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+      responses:
+        '200':
+          description: The inbox after marking it read (unreadCount is 0).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/notifications/{accountId}/{notificationId}:
+    get:
+      tags: [Notifications]
+      summary: One notification, with the order or price alert it is about
+      description: Read-only; does not mark the notification read.
+      operationId: getNotification
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+        - $ref: '#/components/parameters/NotificationId'
+      responses:
+        '200':
+          description: The notification and its order or alert (each null when there is none to show).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationDetailResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/notifications/{accountId}/{notificationId}/read:
+    post:
+      tags: [Notifications]
+      summary: Mark one notification read
+      description: Idempotent; a notification already read keeps the time it was first read.
+      operationId: markNotificationRead
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+        - $ref: '#/components/parameters/NotificationId'
+      responses:
+        '200':
+          description: The inbox after the change, with its unread count.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/notifications/{accountId}/{notificationId}/unread:
+    post:
+      tags: [Notifications]
+      summary: Mark one notification unread
+      operationId: markNotificationUnread
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+        - $ref: '#/components/parameters/NotificationId'
+      responses:
+        '200':
+          description: The inbox after the change, with its unread count.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    AccountId:
+      name: accountId
+      in: path
+      required: true
+      description: The numeric trading account, which must match the token's accountId claim.
+      schema:
+        type: integer
+        format: int64
+    NotificationId:
+      name: notificationId
+      in: path
+      required: true
+      description: The notification's id, as the inbox lists it.
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    NotificationListResponse:
+      type: object
+      required: [notifications, unreadCount]
+      properties:
+        notifications:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotificationResponse'
+        unreadCount:
+          type: integer
+
+    NotificationResponse:
+      type: object
+      required: [id, accountId, type, channel, subject, message, deliveryState, createdOn]
+      properties:
+        id:
+          type: string
+          format: uuid
+        accountId:
+          type: integer
+          format: int64
+        type:
+          type: string
+          description: The event that produced it, e.g. ORDER_FILLED, ORDER_REJECTED, PRICE_ALERT_TRIGGERED.
+        channel:
+          type: string
+          description: The channel the message was routed on, recorded at creation.
+        subject:
+          type: string
+        message:
+          type: string
+        deliveryState:
+          type: string
+          enum: [QUEUED, SENT, FAILED]
+        readOn:
+          type: string
+          format: date-time
+          nullable: true
+        createdOn:
+          type: string
+          format: date-time
+        orderId:
+          type: string
+          nullable: true
+          description: The order it is about, as the blotter shows it (ORD-...). Null when it is not about an order.
+        alertId:
+          type: integer
+          format: int64
+          nullable: true
+          description: The price alert it is about. Null when it is not about an alert.
+        symbol:
+          type: string
+          nullable: true
+          description: The instrument it is about.
+
+    NotificationDetailResponse:
+      type: object
+      required: [notification]
+      properties:
+        notification:
+          $ref: '#/components/schemas/NotificationResponse'
+        order:
+          $ref: '#/components/schemas/OrderDetails'
+        alert:
+          $ref: '#/components/schemas/AlertDetails'
+
+    OrderDetails:
+      type: object
+      nullable: true
+      description: The order the notification is about, as it stands now. Null when there is none, or it can no longer be read.
+      required: [orderId, symbol, side, quantity, price, status]
+      properties:
+        orderId:
+          type: string
+        symbol:
+          type: string
+        side:
+          type: string
+          enum: [BUY, SELL]
+        quantity:
+          type: integer
+        price:
+          type: number
+        executedPrice:
+          type: number
+          nullable: true
+        status:
+          type: string
+        rejectionReason:
+          type: string
+          nullable: true
+          description: Why a REJECTED order was rejected, as a reason code (e.g. INSUFFICIENT_FUNDS, PRICE_NOT_MET).
+        createdOn:
+          type: string
+          format: date-time
+          nullable: true
+
+    AlertDetails:
+      type: object
+      nullable: true
+      description: The price alert the notification is about, as it stands now. Null when there is none, or it can no longer be read.
+      required: [alertId, symbol, direction, targetPrice, status]
+      properties:
+        alertId:
+          type: integer
+          format: int64
+        symbol:
+          type: string
+        direction:
+          type: string
+          enum: [ABOVE, BELOW]
+        targetPrice:
+          type: number
+        status:
+          type: string
+        triggeredOn:
+          type: string
+          format: date-time
+          nullable: true
+        triggeredPrice:
+          type: number
+          nullable: true
+
+    ErrorResponse:
+      type: object
+      required: [errorCode, message]
+      properties:
+        errorCode:
+          type: string
+          enum: [AUTH-401, ACC-403, NTF-404]
+        message:
+          type: string
+
+  responses:
+    Unauthorised:
+      description: Missing, malformed, expired or forged token.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: The token does not own the account in the path.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: No such notification for this account (NTF-404).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'

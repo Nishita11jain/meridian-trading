@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.trading.api.extensions.preferences.PreferencesMapper">
+
+    <resultMap id="PreferenceResultMap" type="com.trading.api.extensions.preferences.CustomerPreferenceRow">
+        <id property="accountId" column="account_id" javaType="java.lang.Long"/>
+        <result property="defaultAccountId" column="default_account_id" javaType="java.lang.Long"/>
+        <result property="notificationChannel" column="notification_channel" javaType="java.lang.String"/>
+        <result property="contactEmail" column="contact_email" javaType="java.lang.String"/>
+        <result property="contactPhone" column="contact_phone" javaType="java.lang.String"/>
+        <result property="displayCurrency" column="display_currency" javaType="java.lang.String"/>
+        <result property="theme" column="theme" javaType="java.lang.String"/>
+        <result property="avatarKey" column="avatar_key" javaType="java.lang.String"/>
+        <result property="updatedOn" column="updated_on" javaType="java.time.Instant"/>
+    </resultMap>
+
+    <select id="findByAccountId" resultMap="PreferenceResultMap">
+        SELECT account_id, default_account_id, notification_channel, contact_email, contact_phone,
+               display_currency, theme, avatar_key, updated_on
+        FROM customer_preferences
+        WHERE account_id = #{accountId}
+    </select>
+
+    <!--
+      Touches only the notification columns. On a first save for an account the display columns take
+      their table defaults; on a later save they keep whatever the display upsert last wrote.
+    -->
+    <update id="upsertNotification">
+        INSERT INTO customer_preferences
+            (account_id, default_account_id, notification_channel, contact_email, contact_phone, updated_on)
+        VALUES
+            (#{accountId}, #{defaultAccountId}, #{notificationChannel}, #{contactEmail}, #{contactPhone}, NOW())
+        ON CONFLICT (account_id) DO UPDATE SET
+            notification_channel = EXCLUDED.notification_channel,
+            contact_email        = EXCLUDED.contact_email,
+            contact_phone        = EXCLUDED.contact_phone,
+            updated_on           = NOW()
+    </update>
+
+    <!-- Touches only the display columns, symmetrically with upsertNotification. -->
+    <update id="upsertDisplay">
+        INSERT INTO customer_preferences
+            (account_id, default_account_id, display_currency, theme, updated_on)
+        VALUES
+            (#{accountId}, #{defaultAccountId}, #{displayCurrency}, #{theme}, NOW())
+        ON CONFLICT (account_id) DO UPDATE SET
+            display_currency = EXCLUDED.display_currency,
+            theme            = EXCLUDED.theme,
+            updated_on       = NOW()
+    </update>
+
+    <!-- Touches only the avatar column, like the two upserts above. -->
+    <update id="upsertAvatar">
+        INSERT INTO customer_preferences
+            (account_id, default_account_id, avatar_key, updated_on)
+        VALUES
+            (#{accountId}, #{defaultAccountId}, #{avatarKey}, NOW())
+        ON CONFLICT (account_id) DO UPDATE SET
+            avatar_key = EXCLUDED.avatar_key,
+            updated_on = NOW()
+    </update>
+
+</mapper>

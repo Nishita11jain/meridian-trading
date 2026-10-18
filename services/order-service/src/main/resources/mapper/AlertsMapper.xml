@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.trading.api.extensions.watchlists.AlertsMapper">
+
+    <resultMap id="AlertResultMap" type="com.trading.api.extensions.watchlists.AlertRow">
+        <id property="id" column="id" javaType="java.lang.Long"/>
+        <result property="accountId" column="account_id" javaType="java.lang.Long"/>
+        <result property="symbol" column="symbol" javaType="java.lang.String"/>
+        <result property="direction" column="direction" javaType="java.lang.String"/>
+        <result property="targetPrice" column="target_price" javaType="java.math.BigDecimal"/>
+        <result property="status" column="status" javaType="java.lang.String"/>
+        <result property="createdOn" column="created_on" javaType="java.time.Instant"/>
+        <result property="triggeredOn" column="triggered_on" javaType="java.time.Instant"/>
+        <result property="triggeredPrice" column="triggered_price" javaType="java.math.BigDecimal"/>
+        <result property="lastObservedPrice" column="last_observed_price" javaType="java.math.BigDecimal"/>
+    </resultMap>
+
+    <insert id="insertAlert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO price_alerts (account_id, symbol, direction, target_price, status)
+        VALUES (#{accountId}, #{symbol}, #{direction}, #{targetPrice}, 'ACTIVE')
+    </insert>
+
+    <select id="findByAccount" resultMap="AlertResultMap">
+        SELECT id, account_id, symbol, direction, target_price, status, created_on, triggered_on, triggered_price
+        FROM price_alerts
+        WHERE account_id = #{accountId}
+        ORDER BY created_on DESC, id
+    </select>
+
+    <select id="findById" resultMap="AlertResultMap">
+        SELECT id, account_id, symbol, direction, target_price, status, created_on, triggered_on, triggered_price
+        FROM price_alerts
+        WHERE id = #{id}
+    </select>
+
+    <!-- Active alerts for one symbol, each with its last observed price. FOR UPDATE on the alert rows
+         so two overlapping quote deliveries cannot both fire the same alert. -->
+    <select id="findActiveBySymbol" resultMap="AlertResultMap">
+        SELECT a.id, a.account_id, a.symbol, a.direction, a.target_price, a.status,
+               a.created_on, a.triggered_on, a.triggered_price, s.last_observed_price
+        FROM price_alerts a
+        LEFT JOIN price_alert_state s ON s.alert_id = a.id
+        WHERE a.symbol = #{symbol} AND a.status = 'ACTIVE'
+        FOR UPDATE OF a
+    </select>
+
+    <select id="countActiveByAccount" resultType="int">
+        SELECT count(*) FROM price_alerts WHERE account_id = #{accountId} AND status = 'ACTIVE'
+    </select>
+
+    <update id="markTriggered">
+        UPDATE price_alerts
+        SET status = 'TRIGGERED', triggered_on = NOW(), triggered_price = #{price}
+        WHERE id = #{id} AND status = 'ACTIVE'
+    </update>
+
+    <update id="cancel">
+        UPDATE price_alerts
+        SET status = 'CANCELLED'
+        WHERE id = #{id} AND account_id = #{accountId} AND status = 'ACTIVE'
+    </update>
+
+</mapper>

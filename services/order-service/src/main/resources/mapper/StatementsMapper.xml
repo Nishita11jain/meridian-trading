@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.trading.api.extensions.statements.StatementsMapper">
+
+    <resultMap id="TradeLineMap" type="com.trading.api.extensions.statements.TradeLine">
+        <result property="executedAt" column="executed_at" javaType="java.time.LocalDateTime"/>
+        <result property="orderId" column="order_id" javaType="java.lang.String"/>
+        <result property="symbol" column="symbol" javaType="java.lang.String"/>
+        <result property="side" column="side" javaType="java.lang.String"/>
+        <result property="quantity" column="quantity" javaType="java.lang.Long"/>
+        <result property="price" column="price" javaType="java.math.BigDecimal"/>
+        <result property="currency" column="currency" javaType="java.lang.String"/>
+    </resultMap>
+
+    <resultMap id="CashLineMap" type="com.trading.api.extensions.statements.CashLine">
+        <result property="createdAt" column="created_at" javaType="java.time.LocalDateTime"/>
+        <result property="type" column="transaction_type" javaType="java.lang.String"/>
+        <result property="amount" column="amount" javaType="java.math.BigDecimal"/>
+        <result property="reference" column="reference_id" javaType="java.lang.String"/>
+    </resultMap>
+
+    <select id="findTrades" resultMap="TradeLineMap">
+        SELECT t.executed_at,
+               CAST(o.id AS VARCHAR) AS order_id,
+               o.symbol,
+               o.side,
+               t.quantity,
+               t.execution_price AS price,
+               i.currency
+        FROM trades t
+        JOIN orders o ON o.id = t.order_id
+        JOIN instruments i ON i.symbol = o.symbol
+        WHERE o.account_id = #{accountId}
+          AND t.executed_at &gt;= #{from}
+          AND t.executed_at &lt; #{to}
+        ORDER BY t.executed_at ASC, o.id ASC
+    </select>
+
+    <select id="findCash" resultMap="CashLineMap">
+        SELECT created_at, transaction_type, amount, reference_id
+        FROM account_transactions
+        WHERE account_id = #{accountId}
+          AND created_at &gt;= #{from}
+          AND created_at &lt; #{to}
+        ORDER BY created_at ASC, id ASC
+    </select>
+</mapper>

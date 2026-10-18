@@ -1,0 +1,16 @@
+.gitignore
+api.base.service.ts
+api/advice.service.ts
+api/api.ts
+configuration.ts
+encoder.ts
+git_push.sh
+model/adviceHealth200Response.ts
+model/chartPoint.ts
+model/direction.ts
+model/errorResponse.ts
+model/models.ts
+model/signalResponse.ts
+param.ts
+provide-api.ts
+variables.ts

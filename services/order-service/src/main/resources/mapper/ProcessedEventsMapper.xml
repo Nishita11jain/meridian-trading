@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.trading.api.extensions.ProcessedEventsMapper">
+
+    <!--
+      One guarded INSERT. ON CONFLICT DO NOTHING means a second delivery of the same event inserts
+      nothing and returns 0, so the caller can tell "I claimed this" (1) from "already handled" (0).
+    -->
+    <insert id="claim">
+        INSERT INTO processed_events (consumer_name, event_id)
+        VALUES (#{consumerName}, #{eventId,javaType=java.util.UUID,typeHandler=com.trading.api.mapper.UuidTypeHandler})
+        ON CONFLICT (consumer_name, event_id) DO NOTHING
+    </insert>
+
+</mapper>
